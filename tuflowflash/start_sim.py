@@ -12,7 +12,10 @@ import datetime
 import shutil
 import requests
 from osgeo import osr, gdalconst
-import gdal
+try:
+    import gdal
+except:
+    from osgeo import gdal
 import glob
 import numpy as np
 
