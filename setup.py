@@ -9,7 +9,7 @@ setup(
     # Needed to actually package something
     packages=['tuflowflash'],
     # Needed for dependencies
-    install_requires=["gdal","argparse","configparser","typing","cftime","netCDF4","pandas",],
+    install_requires=["gdal","argparse","requests","configparser","typing","cftime","netCDF4","pandas",],
     # *strongly* suggested for sharing
     version='0.2',
     # The license can be anything you like
