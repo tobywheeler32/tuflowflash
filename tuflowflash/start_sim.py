@@ -9,15 +9,18 @@ import cftime
 import netCDF4 as nc
 import pandas as pd
 import datetime
-import shutil
 import requests
 from osgeo import osr, gdalconst
+
 try:
     import gdal
 except:
     from osgeo import gdal
 import glob
 import numpy as np
+import shutil
+import urllib.request as request
+from contextlib import closing
 
 logger = logging.getLogger(__name__)
 tijd = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -26,11 +29,17 @@ RASTER_SOURCES_URL = (
     "https://rhdhv.lizard.net/api/v4/rastersources/"  # use rastersources endpoint
 )
 
+
 class MissingFileException(Exception):
     pass
 
-def format_logger():
-    logger.setLevel(logging.DEBUG)
+
+def format_logger(kwargs):
+    if kwargs["verbose"]:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+    logger.setLevel(log_level)
     fh = logging.FileHandler(
         os.path.join("log", "tuflow_simulation{dt}.log".format(dt=tijd))
     )
@@ -64,8 +73,9 @@ def create_new_rastersource(settings):
         "interval": "00:05:00",  # ISO 8601-format, ("1 01:00:00")
     }
 
-    r=requests.post(url=RASTER_SOURCES_URL, json=configuration, headers=headers)
+    r = requests.post(url=RASTER_SOURCES_URL, json=configuration, headers=headers)
     print(r.json())
+
 
 def create_projection(settings):
     srs = osr.SpatialReference()
@@ -77,7 +87,7 @@ def create_projection(settings):
 def convert_flt_to_tiff(settings):
 
     gdal.UseExceptions()
-    filenames = glob.glob(os.path.join(settings["grid_results_dir"], "*_d_*.flt"))
+    filenames = glob.glob(os.path.join(settings["output_folder"], "grids", "*_d_*.flt"))
     for file in filenames:
         # load dem raster file
         data = gdal.Open(file, gdalconst.GA_ReadOnly)
@@ -102,7 +112,7 @@ def convert_flt_to_tiff(settings):
 
 
 def post_results_to_lizard(settings):
-    filenames = glob.glob(os.path.join(settings["grid_results_dir"], "*_d_*.tif"))
+    filenames = glob.glob(os.path.join(settings["output_folder"], "grids", "*_d_*.tif"))
     username = "__key__"
     password = settings["apikey"]
     headers = {
@@ -113,13 +123,18 @@ def post_results_to_lizard(settings):
     url = raster_url + "data/"
 
     for file in filenames:
-        print(file)
-        file = {"file": open(file, "rb")}
-        # hardcoded
-        timestamp = "2020-01-01T00:10:00Z"
-        data = {"timestamp": timestamp}
-
-        requests.post(url=url, data=data, files=file, headers=headers)
+        tuflow_timestamp = Path(file).stem.split("_d_")[1]
+        if tuflow_timestamp.lower() != "max":
+            tuflow_timestamp_hours = int(tuflow_timestamp.split("_")[0])
+            tuflow_timestamp_minutes = int(tuflow_timestamp.split("_")[1])
+            timestamp = settings["start"] + datetime.timedelta(
+                hours=tuflow_timestamp_hours, minutes=tuflow_timestamp_minutes
+            )
+            logger.debug("posting file %s to lizard", file)
+            lizard_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:00Z")
+            file = {"file": open(file, "rb")}
+            data = {"timestamp": lizard_timestamp}
+            r = requests.post(url=url, data=data, files=file, headers=headers)
     return
 
 
@@ -134,8 +149,9 @@ def delete_former_lizard_results(settings):
     url = raster_url + "data/"
     # hardcoded
     data = {"start": "2020-01-01T00:01:00Z", "stop": "2020-01-01T00:15:00Z"}
-    r=requests.delete(url=url, json=data, headers=headers)
+    r = requests.delete(url=url, json=data, headers=headers)
     print(r.json())
+
 
 def read_rainfall_timeseries_uuids(settings):
     rainfall_timeseries = pd.read_csv(Path(settings["precipitation_uuid_file"]))
@@ -189,26 +205,36 @@ def process_rainfall_timeseries_for_tuflow(rain_df):
     return rain_df
 
 
+def download_bom_data(settings):
+    bomfile = settings["bom_file"] + ".20190417215000.nc"
+    tmp_rainfile = "tmp_rain.nc"
+    with closing(request.urlopen(settings["bom_url"] + bomfile)) as r:
+        with open(tmp_rainfile, "wb") as f:
+            shutil.copyfileobj(r, f)
+
+
 def timestamps_from_netcdf(source_file: Path) -> List[cftime.DatetimeGregorian]:
     source = nc.Dataset(source_file)
     timestamps = nc.num2date(source["valid_time"][:], source["valid_time"].units)
     source.close()
     return timestamps
 
+
 def get_p50_netcdf_rainfall(source):
-    #select 50pth percentile rainfall
-    cum_rainfall_list=[]
-    for x in range(len(source.variables['precipitation'])):
-        cum_rainfall_list.append(np.sum(np.sum(source.variables['precipitation'][x])))
+    # select 50pth percentile rainfall
+    cum_rainfall_list = []
+    for x in range(len(source.variables["precipitation"])):
+        cum_rainfall_list.append(np.sum(np.sum(source.variables["precipitation"][x])))
         p = np.percentile(cum_rainfall_list, 10)
-        closest_to_p50=min(cum_rainfall_list, key=lambda x:abs(x-p))
-        p50_index=cum_rainfall_list.index(closest_to_p50)
+        closest_to_p50 = min(cum_rainfall_list, key=lambda x: abs(x - p))
+        p50_index = cum_rainfall_list.index(closest_to_p50)
     return p50_index
 
+
 def write_new_netcdf(source_file: Path, target_file: Path, time_indexes: List):
-  
+
     source = nc.Dataset(source_file)
-    target = nc.Dataset(target_file, mode="w")    
+    target = nc.Dataset(target_file, mode="w")
     p50_index = get_p50_netcdf_rainfall(source)
     # Create the dimensions of the file.
     for name, dim in source.dimensions.items():
@@ -222,38 +248,40 @@ def write_new_netcdf(source_file: Path, target_file: Path, time_indexes: List):
     # Create the variables in the file.
     for name, var in source.variables.items():
 
-        if name=='precipitation':
-            target.createVariable(name, var.dtype,('valid_time', 'y', 'x'))
-        elif name=='valid_time':
-            target.createVariable(name, float,var.dimensions)
+        if name == "precipitation":
+            target.createVariable(name, var.dtype, ("valid_time", "y", "x"))
+        elif name == "valid_time":
+            target.createVariable(name, float, var.dimensions)
         else:
             target.createVariable(name, var.dtype, var.dimensions)
         # Copy the variable attributes.
         target.variables[name].setncatts({a: var.getncattr(a) for a in var.ncattrs()})
         data = source.variables[name][:]
         # Copy the variables values (as 'f4' eventually).
-        if name =="valid_time":
+        if name == "valid_time":
             data = data[time_indexes]
-            data = data/3600
-            target.variables[name][:] = data
+            data = data - data[0]
+            data = data / 3600
+            target.renameVariable("valid_time", "time")
+            target.variables["time"][:] = data
         elif name == "precipitation":
-            data = data[p50_index,time_indexes]
-            target.variables[name][:,:,:] = data
+            data = data[p50_index, time_indexes]
+            target.renameVariable("precipitation", "rainfall_depth")
+            target.variables["rainfall_depth"][:, :, :] = data
         elif name == "x" or name == "y":
             target.variables[name][:] = data
-    target.renameVariable("precipitation", "rainfall_depth")
-    target.renameVariable("valid_time", "time")
+
     # Save the file.
     target.close()
     source.close()
 
 
-def write_netcdf_with_time_indexes(source_file: Path, start, end):
+def write_netcdf_with_time_indexes(source_file: Path, settings, start, end):
     """Return netcdf file with only time indexes"""
     if not source_file.exists():
         raise MissingFileException("Source netcdf file %s not found", source_file)
 
-    #logger.info("Converting %s to a file with only time indexes", source_file)
+    # logger.info("Converting %s to a file with only time indexes", source_file)
     relevant_timestamps = timestamps_from_netcdf(source_file)
     # Figure out which timestamps are valid for the given simulation period.
     time_indexes: List = (
@@ -265,14 +293,12 @@ def write_netcdf_with_time_indexes(source_file: Path, start, end):
         .tolist()
     )
 
-    # Create new file with only time indexes
-    #temp_dir = Path(tempfile.mkdtemp(prefix="fews-3di"))
-    #target_file = temp_dir / source_file.name
+    write_new_netcdf(source_file, settings["netcdf_rainfall_file"], time_indexes)
+    logger.debug(
+        "Wrote new time-index-only netcdf to %s", settings["netcdf_rainfall_file"]
+    )
+    return
 
-    target_file=r"C:\Users\922383\Documents\TUFLOW\test.nc"
-    write_new_netcdf(source_file, target_file, time_indexes)
-    #logger.debug("Wrote new time-index-only netcdf to %s", target_file)
-    return target_file
 
 def system_custom(cmd):
     try:
@@ -290,6 +316,41 @@ def system_custom(cmd):
         exit("Executable terminated, see log file")
 
 
+def copy_states(settings):
+    trf_input_file = settings["tcf_file"].replace(".tcf", ".trf")
+    trf_result_file = Path(os.path.join(settings["output_folder"], trf_input_file))
+
+    if trf_result_file.exists():
+        shutil.copyfile(trf_result_file, trf_input_file)
+    else:
+        raise MissingFileException("Source trf file %s not found", trf_result_file)
+
+    erf_input_file = settings["tcf_file"].replace(".tcf", ".erf")
+    erf_result_file = Path(os.path.join(settings["output_folder"], erf_input_file))
+    if erf_result_file.exists():
+        shutil.copyfile(erf_result_file, erf_input_file)
+    else:
+        raise MissingFileException("Source erf file %s not found", erf_result_file)
+
+
+def extract_variable_from_tcf(line):
+    variable = line.split("==")[1]
+    variable = variable.split("!")[0].strip()
+    return variable
+
+
+def read_tcf_parameters(kwargs):
+    with open(kwargs["tcf_file"]) as f:
+        lines = f.readlines()
+    for line in lines:
+        if line.lower().startswith("start time"):
+            kwargs["start_time"] = float(extract_variable_from_tcf(line))
+        if line.lower().startswith("output folder"):
+            kwargs["output_folder"] = Path(extract_variable_from_tcf(line))
+
+    return kwargs
+
+
 def set_settings(**kwargs):
     # maak de output van deze functie aan
     _kwargs = kwargs
@@ -302,11 +363,13 @@ def set_settings(**kwargs):
     _kwargs["tuflow_executable"] = config.get("tuflow", "tuflow_executable")
     _kwargs["tcf_file"] = config.get("tuflow", "tcf_file")
     _kwargs["use_states"] = config.get("tuflow", "use_states")
-    _kwargs["trf_file"] = config.get("tuflow", "trf_file")
-    _kwargs["erf_file"] = config.get("tuflow", "erf_file")
     _kwargs["sim_duration"] = config.get("tuflow", "sim_duration")
     _kwargs["gauge_rainfall_file"] = config.get("tuflow", "gauge_rainfall_file")
-    _kwargs["grid_results_dir"] = config.get("tuflow", "grid_results_dir")
+    _kwargs["netcdf_rainfall_file"] = config.get("tuflow", "netcdf_rainfall_file")
+
+    # bom settings
+    _kwargs["bom_url"] = config.get("bom", "bom_url")
+    _kwargs["bom_file"] = config.get("bom", "bom_file")
 
     # lizard settings
     _kwargs["apikey"] = config.get("lizard", "apikey")
@@ -317,6 +380,8 @@ def set_settings(**kwargs):
     _kwargs["run_simulation"] = (
         config.get("switches", "run_simulation").lower() == "true"
     )
+
+    _kwargs = read_tcf_parameters(_kwargs)
     return _kwargs
 
 
@@ -330,7 +395,17 @@ def get_parser():
         metavar="instellingen",
         help="Het .ini bestand met de instellingen voor de voor/naverwerking.",
     )
+
     # OPTIONAL ARGUMENTS
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        dest="verbose",
+        default=False,
+        help="Verbose output",
+    )
+
     parser.add_argument(
         "-rainfall", metavar="netcdf", default=None, help="netcdf rainfall file"
     )
@@ -339,12 +414,17 @@ def get_parser():
 
 def main():
     """ Call command with args from parser. """
+    ## read settings
     kwargs = vars(get_parser().parse_args())
-    logger = format_logger()
+    logger = format_logger(kwargs)
     settings = set_settings(**kwargs)
     logger.info("settings have been read")
+
+    # hardcoded:
+    settings["start"] = datetime.datetime(2019, 1, 1, 0, 0)
     rainfall_gauges_uuids = read_rainfall_timeseries_uuids(settings)
-    # create_new_rastersource(settings)
+
+    ## download rainfall data
     starttime = datetime.datetime.now() - datetime.timedelta(days=5)
     endtime = (
         datetime.datetime.now()
@@ -354,30 +434,36 @@ def main():
 
     rain_df = get_lizard_timeseries(settings, rainfall_gauges_uuids, starttime, endtime)
     logger.info("gathered lizard rainfall timeseries")
+
+    download_bom_data(settings)
+
+    ## preprocess rain data
     rain_df = process_rainfall_timeseries_for_tuflow(rain_df)
     rain_df.to_csv(settings["gauge_rainfall_file"])
     logger.info("succesfully written rainfall file")
-    #temp 
-    sourcePath=Path(r"C:\Users\922383\Documents\TUFLOW\bc_dbase\RFG\rain.nc")
-    start = datetime.datetime(2021, 3, 15, 5, 50)
-    end = datetime.datetime(2021, 3, 15, 6, 25)
-    #regular
-    write_netcdf_with_time_indexes(sourcePath, start, end)
+    # temp
+    sourcePath = Path(r"tmp_rain.nc")
+    start = datetime.datetime(2019, 4, 17, 21, 50)
+    end = datetime.datetime(2019, 4, 17, 23, 25)
+    # regular
+    write_netcdf_with_time_indexes(sourcePath, settings, start, end)
     logger.info("succesfully prepared netcdf rainfall")
-    if settings['run_simulation']:
-        logger.info('starting TUFLOW simulation')
+
+    # run simulation
+    if settings["run_simulation"]:
+        logger.info("starting TUFLOW simulation")
         system_custom(
             [settings["tuflow_executable"], settings["tcf_file"],]
         )
         if settings["use_states"]:
-            shutil.copyfile(settings["trf_file"], Path(settings["trf_file"]).name)
-        if settings["erf_file"]:
-            shutil.copyfile(settings["erf_file"], Path(settings["erf_file"]).name)
-        logger.info('Tuflow simulation finished')
+            copy_states(settings)
+        logger.info("Tuflow simulation finished")
+
+    # post processing to lizard
     convert_flt_to_tiff(settings)
     logger.info("Tuflow results converted to tiff")
     delete_former_lizard_results(settings)
-    #create_new_rastersource(settings)
+    # create_new_rastersource(settings)
     post_results_to_lizard(settings)
     logger.info("Tuflow results posted to Lizard")
     return 1
