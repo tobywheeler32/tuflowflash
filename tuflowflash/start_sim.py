@@ -1,26 +1,30 @@
-import subprocess
 import argparse
+import configparser as ConfigParser
+import datetime
 import logging
 import os
-import configparser as ConfigParser
+import subprocess
 from pathlib import Path
 from typing import List
+
 import cftime
 import netCDF4 as nc
 import pandas as pd
-import datetime
 import requests
-from osgeo import osr, gdalconst
+from osgeo import gdalconst, osr
+from pyproj import Proj, Transformer
 
 try:
     import gdal
 except:
     from osgeo import gdal
+
 import glob
-import numpy as np
 import shutil
 import urllib.request as request
 from contextlib import closing
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 tijd = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -59,18 +63,18 @@ def format_logger(kwargs):
     return logger
 
 
-def create_new_rastersource(settings):
+def _create_new_rastersource(settings):
     headers = {
         "username": "__key__",
         "password": settings["apikey"],
     }
     configuration = {
-        "name": "Ivar test raster Tuflow5",
+        "name": "Ivar test raster bom",
         "description": "This is the decription of the test raster",
         "access_modifier": "Public",
         "organisation": "568a4d88c1b345668759dd9b305f619d",  # rhdhv organisation
         "temporal": True,  # temporal=true then
-        "interval": "00:05:00",  # ISO 8601-format, ("1 01:00:00")
+        "interval": "00:10:00",  # ISO 8601-format, ("1 01:00:00")
     }
 
     r = requests.post(url=RASTER_SOURCES_URL, json=configuration, headers=headers)
@@ -213,6 +217,84 @@ def download_bom_data(settings):
             shutil.copyfileobj(r, f)
 
 
+def reproject_bom(x, y):
+    transformer = Transformer.from_proj(Proj("epsg:4326"), Proj("epsg:3577"))
+    x2, y2 = transformer.transform(y, x)
+    return x2, y2
+
+
+def NC_to_tiffs(data, Output_folder):
+    nc_data_obj = nc.Dataset(data)
+    x_center, y_center = reproject_bom(
+        nc_data_obj.variables["proj"].longitude_of_central_meridian,
+        nc_data_obj.variables["proj"].latitude_of_projection_origin,
+    )
+    Lon = nc_data_obj.variables["y"][:] * 1000 + x_center
+    Lat = nc_data_obj.variables["x"][:] * 1000 + y_center
+    precip_arr = np.asarray(
+        nc_data_obj.variables["rainfall_depth"]
+    )  # read ndvi data into an array
+    # the upper-left and lower-right coordinates of the image
+    LonMin, LatMax, LonMax, LatMin = [Lon.min(), Lat.max(), Lon.max(), Lat.min()]
+
+    # resolution calculation
+    N_Lat = len(Lat)
+    N_Lon = len(Lon)
+    Lon_Res = (LonMax - LonMin) / (float(N_Lon) - 1)
+    Lat_Res = (LatMax - LatMin) / (float(N_Lat) - 1)
+
+    for i in range(len(precip_arr[:])):
+        # to create. tif file
+        driver = gdal.GetDriverByName("GTiff")
+        out_tif_name = os.path.join(
+            Output_folder, str(nc_data_obj.variables["time"][i]) + ".tif"
+        )
+        out_tif = driver.Create(out_tif_name, N_Lon, N_Lat, 1, gdal.GDT_Float32)
+
+        #  set the display range of the image
+        # -Lat_Res must be - the
+        geotransform = (LonMin, Lon_Res, 0, LatMax, 0, -Lat_Res)
+        out_tif.SetGeoTransform(geotransform)
+
+        # get geographic coordinate system information to select the desired geographic coordinate system
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(
+            3577
+        )  #  the coordinate system of the output is defined as "WGS 84"，AUTHORITY["EPSG","4326"]
+        out_tif.SetProjection(
+            srs.ExportToWkt()
+        )  #  give the new layer projection information
+
+        # data write
+        out_tif.GetRasterBand(1).WriteArray(
+            precip_arr[i]
+        )  #  writes data to memory, not to disk at this time
+        out_tif.FlushCache()  #  write data to hard disk
+        out_tif = None  #  note that the tif file must be closed
+
+
+def post_bom_to_lizard(settings):
+    filenames = glob.glob(os.path.join("output", "*.tif"))
+    username = "__key__"
+    password = settings["apikey"]
+    headers = {
+        "username": username,
+        "password": password,
+    }
+    raster_url = RASTER_SOURCES_URL + settings["rainfall_raster_uuid"] + "/"
+    url = raster_url + "data/"
+
+    for file in filenames:
+        rain_timestamp = Path(file).stem
+        timestamp = settings["start"] + datetime.timedelta(hours=float(rain_timestamp))
+        logger.debug("posting file %s to lizard", file)
+        lizard_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:00Z")
+        file = {"file": open(file, "rb")}
+        data = {"timestamp": lizard_timestamp}
+        r = requests.post(url=url, data=data, files=file, headers=headers)
+    return
+
+
 def timestamps_from_netcdf(source_file: Path) -> List[cftime.DatetimeGregorian]:
     source = nc.Dataset(source_file)
     timestamps = nc.num2date(source["valid_time"][:], source["valid_time"].units)
@@ -257,7 +339,7 @@ def write_new_netcdf(source_file: Path, target_file: Path, time_indexes: List):
         # Copy the variable attributes.
         target.variables[name].setncatts({a: var.getncattr(a) for a in var.ncattrs()})
         data = source.variables[name][:]
-        # Copy the variables values (as 'f4' eventually).
+        # Copy the variables values.
         if name == "valid_time":
             data = data[time_indexes]
             data = data - data[0]
@@ -300,7 +382,7 @@ def write_netcdf_with_time_indexes(source_file: Path, settings, start, end):
     return
 
 
-def system_custom(cmd):
+def run_tuflow(cmd):
     try:
         if isinstance(cmd, list):
             cmd = " ".join(cmd)
@@ -375,10 +457,20 @@ def set_settings(**kwargs):
     _kwargs["apikey"] = config.get("lizard", "apikey")
     _kwargs["precipitation_uuid_file"] = config.get("lizard", "precipitation_uuid_file")
     _kwargs["depth_raster_uuid"] = config.get("lizard", "depth_raster_uuid")
+    _kwargs["rainfall_raster_uuid"] = config.get("lizard", "rainfall_raster_uuid")
 
     # switches
     _kwargs["run_simulation"] = (
         config.get("switches", "run_simulation").lower() == "true"
+    )
+    _kwargs["get_historical_precipitation"] = (
+        config.get("switches", "get_historical_precipitation").lower() == "true"
+    )
+    _kwargs["get_future_precipitation"] = (
+        config.get("switches", "get_future_precipitation").lower() == "true"
+    )
+    _kwargs["post_to_lizard"] = (
+        config.get("switches", "post_to_lizard").lower() == "true"
     )
 
     _kwargs = read_tcf_parameters(_kwargs)
@@ -419,53 +511,67 @@ def main():
     logger = format_logger(kwargs)
     settings = set_settings(**kwargs)
     logger.info("settings have been read")
-
-    # hardcoded:
     settings["start"] = datetime.datetime(2019, 1, 1, 0, 0)
-    rainfall_gauges_uuids = read_rainfall_timeseries_uuids(settings)
+    # hardcoded:
+    if settings["get_historical_precipitation"]:
+        logger.info("Started gathering historical precipitation data")
+        rainfall_gauges_uuids = read_rainfall_timeseries_uuids(settings)
 
-    ## download rainfall data
-    starttime = datetime.datetime.now() - datetime.timedelta(days=5)
-    endtime = (
-        datetime.datetime.now()
-        - datetime.timedelta(days=5)
-        + datetime.timedelta(hours=int(settings["sim_duration"]))
-    )
+        ## download rainfall data
+        starttime = datetime.datetime.now() - datetime.timedelta(days=5)
+        endtime = (
+            datetime.datetime.now()
+            - datetime.timedelta(days=5)
+            + datetime.timedelta(hours=int(settings["sim_duration"]))
+        )
 
-    rain_df = get_lizard_timeseries(settings, rainfall_gauges_uuids, starttime, endtime)
-    logger.info("gathered lizard rainfall timeseries")
+        rain_df = get_lizard_timeseries(
+            settings, rainfall_gauges_uuids, starttime, endtime
+        )
+        logger.info("gathered lizard rainfall timeseries")
+        ## preprocess rain data
+        rain_df = process_rainfall_timeseries_for_tuflow(rain_df)
+        rain_df.to_csv(settings["gauge_rainfall_file"])
+        logger.info("succesfully written rainfall file")
+    else:
+        logger.info("not gathering historical rainfall, skipping..")
 
-    download_bom_data(settings)
-
-    ## preprocess rain data
-    rain_df = process_rainfall_timeseries_for_tuflow(rain_df)
-    rain_df.to_csv(settings["gauge_rainfall_file"])
-    logger.info("succesfully written rainfall file")
-    # temp
-    sourcePath = Path(r"tmp_rain.nc")
-    start = datetime.datetime(2019, 4, 17, 21, 50)
-    end = datetime.datetime(2019, 4, 17, 23, 25)
-    # regular
-    write_netcdf_with_time_indexes(sourcePath, settings, start, end)
-    logger.info("succesfully prepared netcdf rainfall")
+    if settings["get_future_precipitation"]:
+        download_bom_data(settings)
+        # temp
+        sourcePath = Path(r"tmp_rain.nc")
+        start = datetime.datetime(2019, 4, 17, 21, 50)
+        end = datetime.datetime(2019, 4, 17, 23, 25)
+        # regular
+        write_netcdf_with_time_indexes(sourcePath, settings, start, end)
+        logger.info("succesfully prepared netcdf rainfall")
+    else:
+        logger.info("not gathering future rainfall data, skipping..")
 
     # run simulation
     if settings["run_simulation"]:
         logger.info("starting TUFLOW simulation")
-        system_custom(
+        run_tuflow(
             [settings["tuflow_executable"], settings["tcf_file"],]
         )
         if settings["use_states"]:
             copy_states(settings)
         logger.info("Tuflow simulation finished")
+    else:
+        logger.info("Not running Tuflow simulation, skipping..")
 
-    # post processing to lizard
-    convert_flt_to_tiff(settings)
-    logger.info("Tuflow results converted to tiff")
-    delete_former_lizard_results(settings)
-    # create_new_rastersource(settings)
-    post_results_to_lizard(settings)
-    logger.info("Tuflow results posted to Lizard")
+    if settings["post_to_lizard"]:
+        # post processing to lizard
+        convert_flt_to_tiff(settings)
+        logger.info("Tuflow results converted to tiff")
+        delete_former_lizard_results(settings)
+        # _create_new_rastersource(settings)
+        post_results_to_lizard(settings)
+        NC_to_tiffs(settings["netcdf_rainfall_file"], Path("output"))
+        post_bom_to_lizard(settings)
+        logger.info("Tuflow results posted to Lizard")
+    else:
+        logger.info("Not uploading files to Lizard, skipping..")
     return 1
 
 
