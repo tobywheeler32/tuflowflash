@@ -38,12 +38,21 @@ class MissingFileException(Exception):
     pass
 
 
-def format_logger(kwargs):
+def _format_logger(kwargs):
+    """Format logger to write logging accross python modules 
+    as well as formatting output format and switching between
+    verbose and regular logging.
+    """
+
     if kwargs["verbose"]:
         log_level = logging.DEBUG
     else:
         log_level = logging.INFO
     logger.setLevel(log_level)
+
+    if not os.path.exists("log"):
+        os.mkdir("log")
+
     fh = logging.FileHandler(
         os.path.join("log", "tuflow_simulation{dt}.log".format(dt=tijd))
     )
@@ -82,8 +91,12 @@ def _create_new_rastersource(settings):
 
 
 def create_projection(settings):
+    """obtain wkt definition of the tuflow spatial projection. Used to write 
+    geotiff format files with gdal.
+    """
+    prj_text = open(settings["prj_file"], "r").read()
     srs = osr.SpatialReference()
-    srs.ImportFromEPSG(32760)
+    srs.ImportFromWkt(prj_text)
     srs_wkt = srs.ExportToWkt()
     return srs_wkt
 
@@ -131,14 +144,14 @@ def post_results_to_lizard(settings):
         if tuflow_timestamp.lower() != "max":
             tuflow_timestamp_hours = int(tuflow_timestamp.split("_")[0])
             tuflow_timestamp_minutes = int(tuflow_timestamp.split("_")[1])
-            timestamp = settings["start"] + datetime.timedelta(
+            timestamp = settings["start_time"] + datetime.timedelta(
                 hours=tuflow_timestamp_hours, minutes=tuflow_timestamp_minutes
             )
             logger.debug("posting file %s to lizard", file)
             lizard_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:00Z")
             file = {"file": open(file, "rb")}
             data = {"timestamp": lizard_timestamp}
-            r = requests.post(url=url, data=data, files=file, headers=headers)
+            requests.post(url=url, data=data, files=file, headers=headers)
     return
 
 
@@ -211,7 +224,9 @@ def process_rainfall_timeseries_for_tuflow(rain_df):
 
 def download_bom_data(settings):
     bomfile = settings["bom_file"] + ".20190417215000.nc"
-    tmp_rainfile = "tmp_rain.nc"
+    if not os.path.exists("temp"):
+        os.mkdir("temp")
+    tmp_rainfile = Path("temp/tmp_rain.nc")
     with closing(request.urlopen(settings["bom_url"] + bomfile)) as r:
         with open(tmp_rainfile, "wb") as f:
             shutil.copyfileobj(r, f)
@@ -274,7 +289,7 @@ def NC_to_tiffs(data, Output_folder):
 
 
 def post_bom_to_lizard(settings):
-    filenames = glob.glob(os.path.join("output", "*.tif"))
+    filenames = glob.glob(os.path.join("temp", "*.tif"))
     username = "__key__"
     password = settings["apikey"]
     headers = {
@@ -286,12 +301,14 @@ def post_bom_to_lizard(settings):
 
     for file in filenames:
         rain_timestamp = Path(file).stem
-        timestamp = settings["start"] + datetime.timedelta(hours=float(rain_timestamp))
+        timestamp = settings["start_time"] + datetime.timedelta(
+            hours=float(rain_timestamp)
+        )
         logger.debug("posting file %s to lizard", file)
         lizard_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:00Z")
         file = {"file": open(file, "rb")}
         data = {"timestamp": lizard_timestamp}
-        r = requests.post(url=url, data=data, files=file, headers=headers)
+        requests.post(url=url, data=data, files=file, headers=headers)
     return
 
 
@@ -426,11 +443,36 @@ def read_tcf_parameters(kwargs):
         lines = f.readlines()
     for line in lines:
         if line.lower().startswith("start time"):
-            kwargs["start_time"] = float(extract_variable_from_tcf(line))
+            kwargs["tuflow_start_time"] = float(extract_variable_from_tcf(line))
         if line.lower().startswith("output folder"):
             kwargs["output_folder"] = Path(extract_variable_from_tcf(line))
+        if line.lower().startswith("shp projection"):
+            kwargs["prj_file"] = Path(extract_variable_from_tcf(line))
 
     return kwargs
+
+
+def roundTime(dt=None, roundTo=60):
+    """Round a datetime object to any time lapse in seconds
+   dt : datetime.datetime object, default now.
+   roundTo : Closest number of seconds to round to, default 1 minute.
+   """
+    if dt is None:
+        dt = datetime.datetime.now()
+    seconds = (dt.replace(tzinfo=None) - dt.min).seconds
+    rounding = (seconds + roundTo / 2) // roundTo * roundTo
+    return dt + datetime.timedelta(0, rounding - seconds, -dt.microsecond)
+
+
+def convert_relative_time(relative_time):
+    now = roundTime()
+    if relative_time.startswith("-"):
+        time = now - datetime.timedelta(hours=float(relative_time.strip("-")))
+    elif relative_time.startswith("+"):
+        time = now + datetime.timedelta(hours=float(relative_time.strip("-")))
+    else:
+        time = now + datetime.timedelta(hours=float(relative_time))
+    return time
 
 
 def set_settings(**kwargs):
@@ -441,10 +483,20 @@ def set_settings(**kwargs):
     config = ConfigParser.RawConfigParser()
     config.read(kwargs["instellingen"])
 
+    # general settings
+    _kwargs["start_time"] = convert_relative_time(
+        config.get("general", "relative_start_time")
+    )
+    _kwargs["end_time"] = convert_relative_time(
+        config.get("general", "relative_end_time")
+    )
+
     # tuflow settings
     _kwargs["tuflow_executable"] = config.get("tuflow", "tuflow_executable")
     _kwargs["tcf_file"] = config.get("tuflow", "tcf_file")
-    _kwargs["use_states"] = config.get("tuflow", "use_states")
+    _kwargs["prepare_state_for_next_run"] = config.get(
+        "tuflow", "prepare_state_for_next_run"
+    )
     _kwargs["sim_duration"] = config.get("tuflow", "sim_duration")
     _kwargs["gauge_rainfall_file"] = config.get("tuflow", "gauge_rainfall_file")
     _kwargs["netcdf_rainfall_file"] = config.get("tuflow", "netcdf_rainfall_file")
@@ -508,27 +560,23 @@ def main():
     """ Call command with args from parser. """
     ## read settings
     kwargs = vars(get_parser().parse_args())
-    logger = format_logger(kwargs)
+    logger = _format_logger(kwargs)
     settings = set_settings(**kwargs)
     logger.info("settings have been read")
-    settings["start"] = datetime.datetime(2019, 1, 1, 0, 0)
-    # hardcoded:
+
+    ## historical precipitation
     if settings["get_historical_precipitation"]:
         logger.info("Started gathering historical precipitation data")
         rainfall_gauges_uuids = read_rainfall_timeseries_uuids(settings)
 
-        ## download rainfall data
-        starttime = datetime.datetime.now() - datetime.timedelta(days=5)
-        endtime = (
-            datetime.datetime.now()
-            - datetime.timedelta(days=5)
-            + datetime.timedelta(hours=int(settings["sim_duration"]))
-        )
-
         rain_df = get_lizard_timeseries(
-            settings, rainfall_gauges_uuids, starttime, endtime
+            settings,
+            rainfall_gauges_uuids,
+            settings["start_time"],
+            settings["end_time"],
         )
         logger.info("gathered lizard rainfall timeseries")
+
         ## preprocess rain data
         rain_df = process_rainfall_timeseries_for_tuflow(rain_df)
         rain_df.to_csv(settings["gauge_rainfall_file"])
@@ -536,10 +584,12 @@ def main():
     else:
         logger.info("not gathering historical rainfall, skipping..")
 
+    ## future precipitation
     if settings["get_future_precipitation"]:
         download_bom_data(settings)
+
+        sourcePath = Path(r"temp\tmp_rain.nc")
         # temp
-        sourcePath = Path(r"tmp_rain.nc")
         start = datetime.datetime(2019, 4, 17, 21, 50)
         end = datetime.datetime(2019, 4, 17, 23, 25)
         # regular
@@ -548,26 +598,24 @@ def main():
     else:
         logger.info("not gathering future rainfall data, skipping..")
 
-    # run simulation
+    ## run simulation
     if settings["run_simulation"]:
         logger.info("starting TUFLOW simulation")
-        run_tuflow(
-            [settings["tuflow_executable"], settings["tcf_file"],]
-        )
-        if settings["use_states"]:
+        run_tuflow([settings["tuflow_executable"], "-b", settings["tcf_file"]])
+        if settings["prepare_state_for_next_run"]:
             copy_states(settings)
         logger.info("Tuflow simulation finished")
     else:
         logger.info("Not running Tuflow simulation, skipping..")
 
+    ## uploading to Lizard
     if settings["post_to_lizard"]:
-        # post processing to lizard
         convert_flt_to_tiff(settings)
         logger.info("Tuflow results converted to tiff")
         delete_former_lizard_results(settings)
         # _create_new_rastersource(settings)
         post_results_to_lizard(settings)
-        NC_to_tiffs(settings["netcdf_rainfall_file"], Path("output"))
+        NC_to_tiffs(settings["netcdf_rainfall_file"], Path("temp"))
         post_bom_to_lizard(settings)
         logger.info("Tuflow results posted to Lizard")
     else:
