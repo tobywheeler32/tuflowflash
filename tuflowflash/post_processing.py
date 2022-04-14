@@ -15,6 +15,7 @@ import logging
 from pathlib import Path
 import json
 import requests
+import shutil
 
 import netCDF4 as nc
 import numpy as np
@@ -41,6 +42,30 @@ class ProcessFlash:
         self.NC_to_tiffs(Path("temp"))
         self.post_bom_to_lizard()
         logger.info("Tuflow results posted to Lizard")
+
+    def archive_simulation(self):
+        folder_time_string = (
+            str(self.settings.start_time).replace(":", "_").replace(" ", "_")
+        )
+        result_folder = Path("../results/results_" + folder_time_string)
+        os.mkdir(result_folder)
+        shutil.copytree("log", os.path.join(result_folder, "log"))
+        shutil.copytree(
+            self.settings.output_folder, os.path.join(result_folder, "results")
+        )
+        if self.settings.netcdf_rainfall_file:
+            shutil.copyfile(
+                self.settings.netcdf_rainfall_file,
+                os.path.join(result_folder, "netcdf_rain.nc"),
+            )
+        if self.settings.gauge_rainfall_file:
+            shutil.copyfile(
+                self.settings.gauge_rainfall_file,
+                os.path.join(result_folder, "gauge_rain.nc"),
+            )
+        shutil.make_archive(result_folder, "zip", result_folder)
+        shutil.rmtree(result_folder)
+        logging.info("succesfully archived files to: %s",result_folder)
 
     def create_projection(self):
         """obtain wkt definition of the tuflow spatial projection. Used to write 

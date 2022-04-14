@@ -18,7 +18,7 @@ lizard_settings = {
     "precipitation_uuid_file": Path,
     "depth_raster_uuid": str,
     "rainfall_raster_uuid": str,
-    "waterlevel_result_uuid_file": Path
+    "waterlevel_result_uuid_file": Path,
 }
 
 switches_settings = {
@@ -26,6 +26,7 @@ switches_settings = {
     "get_future_precipitation": bool,
     "run_simulation": bool,
     "post_to_lizard": bool,
+    "archive_simulation": bool,
 }
 
 bom_settings = {"bom_file": str, "bom_url": str}

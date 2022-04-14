@@ -8,7 +8,6 @@ from tuflowflash import read_settings
 from tuflowflash import run_tuflow
 
 logger = logging.getLogger(__name__)
-tijd = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
 OWN_EXCEPTIONS = (
     read_settings.MissingFileException,
@@ -81,7 +80,13 @@ def main():
             post_processer.process_bom()
         else:
             logger.info("Not uploading files to Lizard, skipping..")
+
+        if settings.archive_simulation:
+            post_processer.archive_simulation()
+        else:
+            logger.info("Not archiving files, skipping..")
         return 0
+
     except OWN_EXCEPTIONS as e:
         if options.verbose:
             logger.exception(e)
@@ -89,3 +94,4 @@ def main():
             logger.error("↓↓↓↓↓   Pass --verbose to get more information   ↓↓↓↓↓")
             logger.error(e)
         return 1  # Exit code signalling an error.
+
