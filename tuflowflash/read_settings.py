@@ -18,6 +18,7 @@ lizard_settings = {
     "precipitation_uuid_file": Path,
     "depth_raster_uuid": str,
     "rainfall_raster_uuid": str,
+    "waterlevel_result_uuid_file": Path
 }
 
 switches_settings = {
