@@ -22,9 +22,11 @@ def get_parser():
     # POSITIONAL ARGUMENTS
 
     parser.add_argument(
-        "settings_file",
-        metavar="settings_file",
-        help="The .ini file with settings for model run and pre-/post processing.",
+        "-s",
+        "--settings",
+        dest="settings_file",
+        default="settings.ini",
+        help=".ini settings file",
     )
 
     # OPTIONAL ARGUMENTS
