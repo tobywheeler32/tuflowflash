@@ -61,7 +61,7 @@ class ProcessFlash:
         if self.settings.gauge_rainfall_file:
             shutil.copyfile(
                 self.settings.gauge_rainfall_file,
-                os.path.join(result_folder, "gauge_rain.nc"),
+                os.path.join(result_folder, "gauge_rain.csv"),
             )
         shutil.make_archive(result_folder, "zip", result_folder)
         shutil.rmtree(result_folder)
