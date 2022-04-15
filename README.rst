@@ -6,7 +6,11 @@ Program to start an integrated Tuflow flash simulation including data collection
 
 Installation and usage
 ----------------------
-Requires GDAL to be pre-installed. Advisable to use Anaconda. Install Gdal with::
+
+Preferably set up an anaconda environment for the simulations with::
+	$ conda create -n <environment name> python=3.8 anaconda
+	
+The installation requires GDAL to be pre-installed. Install Gdal with::
 	$ conda install -c conda-forge gdal
 
 Adapter itself can be installed using python 3.6+ with::
