@@ -65,7 +65,7 @@ class ProcessFlash:
             )
         shutil.make_archive(result_folder, "zip", result_folder)
         shutil.rmtree(result_folder)
-        logging.info("succesfully archived files to: %s",result_folder)
+        logging.info("succesfully archived files to: %s", result_folder)
 
     def create_projection(self):
         """obtain wkt definition of the tuflow spatial projection. Used to write 

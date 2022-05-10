@@ -6,6 +6,7 @@ from tuflowflash import post_processing
 from tuflowflash import prepare_data
 from tuflowflash import read_settings
 from tuflowflash import run_tuflow
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ def main():
         # Future precipitation
         if settings.get_future_precipitation:
             data_prepper.get_future_precipitation()
+            data_prepper.NC_to_asci(Path(r"..\bc_dbase\RFG"))
         else:
             logger.info("not gathering future rainfall data, skipping..")
 

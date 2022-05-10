@@ -9,6 +9,14 @@ from typing import List
 import ftplib
 import time
 
+from osgeo import gdalconst, osr
+from pyproj import Proj, Transformer
+
+try:
+    import gdal
+except:
+    from osgeo import gdal
+
 import cftime
 import netCDF4 as nc
 import numpy as np
@@ -213,3 +221,55 @@ class prepareData:
         logger.debug(
             "Wrote new time-index-only netcdf to %s", self.settings.netcdf_rainfall_file
         )
+
+    def reproject_bom(self, x, y):
+        transformer = Transformer.from_proj(Proj("epsg:4326"), Proj("epsg:3577"))
+        x2, y2 = transformer.transform(y, x)
+        return x2, y2
+
+    def NC_to_asci(self, Output_folder):
+        nc_data_obj = nc.Dataset(Path(r"..\bc_dbase\RFG\test.nc"))
+        x_center, y_center = self.reproject_bom(
+            nc_data_obj.variables["proj"].longitude_of_central_meridian,
+            nc_data_obj.variables["proj"].latitude_of_projection_origin,
+        )
+        Lon = nc_data_obj.variables["y"][:] * 1000 + x_center
+        Lat = nc_data_obj.variables["x"][:] * 1000 + y_center
+        precip_arr = np.asarray(
+            nc_data_obj.variables["rainfall_depth"]
+        )  # read data into an array
+        # the upper-left and lower-right coordinates of the image
+        LonMin, LatMax, LonMax, LatMin = [Lon.min(), Lat.max(), Lon.max(), Lat.min()]
+
+        # resolution calculation
+        N_Lat = len(Lat)
+        N_Lon = len(Lon)
+        Lon_Res = (LonMax - LonMin) / (float(N_Lon) - 1)
+        Lat_Res = (LatMax - LatMin) / (float(N_Lat) - 1)
+
+        for i in range(len(precip_arr[:])):
+            # to create. asc file
+            driver = gdal.GetDriverByName("GTiff")
+            out_tif_name = os.path.join(
+                Output_folder, str(round(nc_data_obj.variables["time"][i],2)) + ".asc"
+            )
+            out_tif = driver.Create(out_tif_name, N_Lon, N_Lat, 1, gdal.GDT_Float32)
+
+            #  set the display range of the image
+            # -Lat_Res must be - the
+            geotransform = (LonMin, Lon_Res, 0, LatMax, 0, -Lat_Res)
+            out_tif.SetGeoTransform(geotransform)
+
+            # get geographic coordinate system information to select the desired geographic coordinate system
+            srs = osr.SpatialReference()
+            srs.ImportFromEPSG(3577)  #  the coordinate system of the output
+            out_tif.SetProjection(
+                srs.ExportToWkt()
+            )  #  give the new layer projection information
+
+            # data write
+            out_tif.GetRasterBand(1).WriteArray(
+                precip_arr[i]
+            )  #  writes data to memory, not to disk at this time
+            out_tif.FlushCache()  #  write data to hard disk
+            out_tif = None  #  note that the tif file must be closed
