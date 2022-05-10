@@ -251,7 +251,7 @@ class prepareData:
             # to create. asc file
             driver = gdal.GetDriverByName("GTiff")
             out_tif_name = os.path.join(
-                Output_folder, str(round(nc_data_obj.variables["time"][i],2)) + ".asc"
+                Output_folder, str(nc_data_obj.variables["time"][i]) + ".asc"
             )
             out_tif = driver.Create(out_tif_name, N_Lon, N_Lat, 1, gdal.GDT_Float32)
 
