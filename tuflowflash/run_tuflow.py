@@ -17,6 +17,8 @@ class TuflowSimulation:
         self.run_command = [
             self.settings.tuflow_executable,
             "-b",
+            "-x",
+            "-pu2",
             str(self.settings.tcf_file),
         ]
 
