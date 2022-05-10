@@ -6,6 +6,8 @@ import urllib.request as request
 from contextlib import closing
 from pathlib import Path
 from typing import List
+import ftplib
+import time
 
 import cftime
 import netCDF4 as nc
@@ -16,6 +18,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 TIMESERIES_URL = "https://rhdhv.lizard.net/api/v4/timeseries/{}/events/"
+
 
 class MissingFileException(Exception):
     pass
@@ -38,14 +41,12 @@ class prepareData:
         logger.info("succesfully written rainfall file")
 
     def get_future_precipitation(self):
+        sourcePath = Path(r"temp/tmp_rain.nc")
         self.download_bom_data()
 
-        sourcePath = Path(r"temp\tmp_rain.nc")
-        # temp
-        start = datetime.datetime(2019, 4, 17, 21, 50)
-        end = datetime.datetime(2019, 4, 17, 23, 25)
-        # regular
-        self.write_netcdf_with_time_indexes(sourcePath, start, end)
+        self.write_netcdf_with_time_indexes(
+            sourcePath, self.settings.start_time, self.settings.end_time
+        )
         logger.info("succesfully prepared netcdf rainfall")
 
     def read_rainfall_timeseries_uuids(self):
@@ -100,13 +101,30 @@ class prepareData:
         return rain_df
 
     def download_bom_data(self):
-        bomfile = self.settings.bom_file + ".20190417215000.nc"
+
+        ftp_server = ftplib.FTP(
+            self.settings.bom_url,
+            self.settings.bom_username,
+            self.settings.bom_password,
+        )
+        ftp_server.encoding = "utf-8"
+        ftp_server.cwd("radar/")
+
+        radar_files = []
+        files = ftp_server.nlst()
+
+        for file in files:
+            if file[6:8] == "EN":
+                radar_files.append(file)
+
+        bomfile = radar_files[-1]
         if not os.path.exists("temp"):
             os.mkdir("temp")
-        tmp_rainfile = Path("temp/tmp_rain.nc")
-        with closing(request.urlopen(self.settings.bom_url + bomfile)) as r:
-            with open(tmp_rainfile, "wb") as f:
-                shutil.copyfileobj(r, f)
+
+        with open("temp/tmp_rain.nc", "wb") as file:
+            ftp_server.retrbinary(f"RETR {bomfile}", file.write)
+        ftp_server.close()
+        return
 
     def timestamps_from_netcdf(
         self, source_file: Path

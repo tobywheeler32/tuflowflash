@@ -29,7 +29,7 @@ switches_settings = {
     "archive_simulation": bool,
 }
 
-bom_settings = {"bom_file": str, "bom_url": str}
+bom_settings = {"bom_username": str, "bom_password": str, "bom_url": str}
 
 
 class MissingFileException(Exception):
@@ -94,7 +94,7 @@ class FlashSettings:
         roundTo : Closest number of seconds to round to, default 1 minute.
         """
         if dt is None:
-            dt = datetime.datetime.now()
+            dt = datetime.datetime.utcnow()
         seconds = (dt.replace(tzinfo=None) - dt.min).seconds
         rounding = (seconds + roundTo / 2) // roundTo * roundTo
         return dt + datetime.timedelta(0, rounding - seconds, -dt.microsecond)
