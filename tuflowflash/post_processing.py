@@ -125,8 +125,8 @@ class ProcessFlash:
     def create_post_element(self, series):
         data = []
         for index, value in series.iteritems():
-            data.append({"datetime": index.isoformat() + "Z", "value": str(value)})
-        return json.dumps(data)
+            data.append({"time": index.isoformat() + "Z", "value": str(value)})
+        return data
 
     def post_timeseries(self):
         username = "__key__"
@@ -134,6 +134,7 @@ class ProcessFlash:
         headers = {
             "username": username,
             "password": password,
+            "Content-Type": "application/json",
         }
 
         result_ts_uuids = pd.read_csv(self.settings.waterlevel_result_uuid_file)
@@ -151,8 +152,9 @@ class ProcessFlash:
         results_dataframe.set_index("datetime", inplace=True)
         for index, row in result_ts_uuids.iterrows():
             timeserie = self.create_post_element(results_dataframe[row["po_name"]])
-            url = TIMESERIES_URL + row["ts_uuid"]
-            requests.post(url=url, data=timeserie, headers=headers)
+            url = TIMESERIES_URL + row["ts_uuid"] +'/events/'
+            requests.post(url=url, data=json.dumps(timeserie), headers=headers)
+
 
 
     def NC_to_tiffs(self, Output_folder):
