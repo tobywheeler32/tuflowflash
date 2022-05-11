@@ -36,7 +36,7 @@ class ProcessFlash:
         self.convert_flt_to_tiff()
         logger.info("Tuflow results converted to tiff")
         self.post_raster_to_lizard()
-        if self.settings.waterlevel_result_uuid_file is not None:
+        if hasattr(self.settings, 'waterlevel_result_uuid_file'):
             self.post_timeseries()
 
     def process_bom(self):

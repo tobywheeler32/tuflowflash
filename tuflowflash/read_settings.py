@@ -112,26 +112,28 @@ class FlashSettings:
     def read_settings_file(self, variables, variable_header):
         # maak de output van deze functie aan
         for variable, datatype in variables.items():
-            try:
-                if datatype == int:
-                    setattr(
-                        self, variable, int(self.config.get(variable_header, variable))
+            value = self.config.get(variable_header, variable)
+            if len(value)>0:
+                try:
+                    if datatype == int:
+                        setattr(
+                            self, variable, int(value)
+                        )
+                    if datatype == Path:
+                        setattr(
+                            self, variable, Path(value)
+                        )
+                    if datatype == str:
+                        setattr(
+                            self, variable, str(value)
+                        )
+                    if datatype == bool:
+                        setattr(
+                            self,
+                            variable,
+                            value.lower() == "true",
+                        )
+                except:
+                    raise MissingSettingException(
+                        f"Setting: '{variable}' is missing in " f"{self.settingsFile}."
                     )
-                if datatype == Path:
-                    setattr(
-                        self, variable, Path(self.config.get(variable_header, variable))
-                    )
-                if datatype == str:
-                    setattr(
-                        self, variable, str(self.config.get(variable_header, variable))
-                    )
-                if datatype == bool:
-                    setattr(
-                        self,
-                        variable,
-                        self.config.get(variable_header, variable).lower() == "true",
-                    )
-            except:
-                raise MissingSettingException(
-                    f"Setting: '{variable}' is missing in " f"{self.settingsFile}."
-                )
