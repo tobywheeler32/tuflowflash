@@ -1,7 +1,6 @@
 import os
 
 from osgeo import gdalconst, osr
-from pyproj import Proj, Transformer
 import pandas as pd
 
 try:
@@ -36,7 +35,7 @@ class ProcessFlash:
         self.convert_flt_to_tiff()
         logger.info("Tuflow results converted to tiff")
         self.post_raster_to_lizard()
-        if hasattr(self.settings, 'waterlevel_result_uuid_file'):
+        if hasattr(self.settings, "waterlevel_result_uuid_file"):
             self.post_timeseries()
 
     def process_bom(self):
@@ -59,7 +58,7 @@ class ProcessFlash:
                 self.settings.netcdf_rainfall_file,
                 os.path.join(result_folder, "netcdf_rain.nc"),
             )
-        if hasattr(self.settings,"gauge_rainfall_file"):
+        if hasattr(self.settings, "gauge_rainfall_file"):
             shutil.copyfile(
                 self.settings.gauge_rainfall_file,
                 os.path.join(result_folder, "gauge_rain.csv"),
@@ -139,23 +138,22 @@ class ProcessFlash:
 
         result_ts_uuids = pd.read_csv(self.settings.waterlevel_result_uuid_file)
         # temp
-        file_name = "Fm_Exst_061_02.00p+01440m+tp07+21D+T_HAT_40m+FP.csv"
-
-        results_dataframe = pd.read_csv(file_name)
-        results_dataframe.columns = results_dataframe.columns.str.rstrip(
-            "[" + Path(file_name).stem + "]"
+        file_name = os.path.join(
+            self.settings.output_folder,
+            str(self.settings.tcf_file.name).replace(".tcf", "_PO.csv"),
         )
-        results_dataframe.columns = results_dataframe.columns.str.rstrip(" ")
+
+        results_dataframe = pd.read_csv(file_name, skiprows=1)
         for index, row in results_dataframe.iterrows():
             results_dataframe.at[
-                index, "time"
-            ] = self.settings.start_time + datetime.timedelta(hours=row["Time (h)"])
-        results_dataframe.set_index("time", inplace=True)
-
+                index, "datetime"
+            ] = self.settings.start_time + datetime.timedelta(hours=row["Time"])
+        results_dataframe.set_index("datetime", inplace=True)
         for index, row in result_ts_uuids.iterrows():
             timeserie = self.create_post_element(results_dataframe[row["po_name"]])
             url = TIMESERIES_URL + row["ts_uuid"]
             requests.post(url=url, data=timeserie, headers=headers)
+
 
     def NC_to_tiffs(self, Output_folder):
         nc_data_obj = nc.Dataset(self.settings.netcdf_rainfall_file)
