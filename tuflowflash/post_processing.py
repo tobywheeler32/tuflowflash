@@ -72,9 +72,8 @@ class ProcessFlash:
         """obtain wkt definition of the tuflow spatial projection. Used to write 
         geotiff format files with gdal.
         """
-        prj_text = open(self.settings.prj_file, "r").read()
         srs = osr.SpatialReference()
-        srs.ImportFromWkt(prj_text)
+        srs.ImportFromEPSG(7856)
         srs_wkt = srs.ExportToWkt()
         return srs_wkt
 
