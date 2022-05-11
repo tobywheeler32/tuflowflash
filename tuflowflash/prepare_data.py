@@ -1,27 +1,17 @@
-import datetime
-import logging
-import os
-import shutil
-import urllib.request as request
-from contextlib import closing
 from pathlib import Path
+from pyproj import Proj
+from pyproj import Transformer
 from typing import List
-import ftplib
-import time
-
-from osgeo import gdalconst, osr
-from pyproj import Proj, Transformer
-
-try:
-    import gdal
-except:
-    from osgeo import gdal
 
 import cftime
+import ftplib
+import logging
 import netCDF4 as nc
 import numpy as np
+import os
 import pandas as pd
 import requests
+
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +147,10 @@ class prepareData:
     def write_new_netcdf(self, source_file: Path, time_indexes: List):
 
         source = nc.Dataset(source_file)
+        x_center, y_center = self.reproject_bom(
+            source.variables["proj"].longitude_of_central_meridian,
+            source.variables["proj"].latitude_of_projection_origin,
+        )
         target = nc.Dataset(self.settings.netcdf_rainfall_file, mode="w")
         p50_index = self.get_p50_netcdf_rainfall(source)
         # Create the dimensions of the file.
@@ -164,38 +158,78 @@ class prepareData:
             dim_length = len(dim)
             if name == "valid_time":
                 dim_length = len(time_indexes)
-            target.createDimension(name, dim_length if not dim.isunlimited() else None)
+                target.createDimension(
+                    "time", dim_length if not dim.isunlimited() else None
+                )
+            if name == "x" or name == "y":
+                target.createDimension(
+                    name, dim_length if not dim.isunlimited() else None
+                )
+            if name == "precipitation":
+                target.createDimension(
+                    "rainfall_depth", dim_length if not dim.isunlimited() else None
+                )
 
         # Copy the global attributes.
         target.setncatts({a: source.getncattr(a) for a in source.ncattrs()})
         # Create the variables in the file.
+
         for name, var in source.variables.items():
 
             if name == "precipitation":
-                target.createVariable(name, var.dtype, ("valid_time", "y", "x"))
+                target.createVariable("rainfall_depth", float, ("time", "y", "x"))
+                target.variables["rainfall_depth"].setncatts(
+                    {"grid_mapping": "spatial_ref"}
+                )
             elif name == "valid_time":
-                target.createVariable(name, float, var.dimensions)
-            else:
+                target.createVariable("time", float, "time")
+                target.variables["time"].setncatts(
+                    {
+                        "standard_name": "time",
+                        "long_name": "time",
+                        "units": "hours",
+                        "axis": "T",
+                    }
+                )
+            elif name == "x":
                 target.createVariable(name, var.dtype, var.dimensions)
-            # Copy the variable attributes.
-            target.variables[name].setncatts(
-                {a: var.getncattr(a) for a in var.ncattrs()}
-            )
+                target.variables[name].setncatts(
+                    {
+                        "standard_name": "projection_x_coordinate",
+                        "long_name": "x-coordinate in cartesian system",
+                        "units": "m",
+                        "axis": "X",
+                    }
+                )
+            elif name == "y":
+                target.createVariable(name, var.dtype, var.dimensions)
+                target.variables[name].setncatts(
+                    {
+                        "standard_name": "projection_y_coordinate",
+                        "long_name": "y-coordinate in cartesian system",
+                        "units": "m",
+                        "axis": "Y",
+                    }
+                )
+
             data = source.variables[name][:]
             # Copy the variables values.
             if name == "valid_time":
                 data = data[time_indexes]
                 data = data - data[0]
                 data = data / 3600
-                target.renameVariable("valid_time", "time")
                 target.variables["time"][:] = data
             elif name == "precipitation":
                 data = data[p50_index, time_indexes]
-                target.renameVariable("precipitation", "rainfall_depth")
+                data = data * 0.05
+                data = np.where(data < 0, -999, data)
                 target.variables["rainfall_depth"][:, :, :] = data
-            elif name == "x" or name == "y":
-                target.variables[name][:] = data
-
+            elif name == "x":
+                target.variables[name][:] = data * 1000 + x_center
+            elif name == "y":
+                target.variables[name][:] = data * 1000 + y_center
+        crs = target.createVariable("spatial_ref", "i4")
+        crs.spatial_ref = 'PROJCS["GDA2020_MGA_Zone_56",GEOGCS["GCS_GDA2020",DATUM["GDA2020",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",500000.0],PARAMETER["False_Northing",10000000.0],PARAMETER["Central_Meridian",153.0],PARAMETER["Scale_Factor",0.9996],PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]]'
         # Save the file.
         target.close()
         source.close()
@@ -223,53 +257,6 @@ class prepareData:
         )
 
     def reproject_bom(self, x, y):
-        transformer = Transformer.from_proj(Proj("epsg:4326"), Proj("epsg:3577"))
+        transformer = Transformer.from_proj(Proj("epsg:4326"), Proj("epsg:7856"))
         x2, y2 = transformer.transform(y, x)
         return x2, y2
-
-    def NC_to_asci(self, Output_folder):
-        nc_data_obj = nc.Dataset(Path(r"..\bc_dbase\RFG\test.nc"))
-        x_center, y_center = self.reproject_bom(
-            nc_data_obj.variables["proj"].longitude_of_central_meridian,
-            nc_data_obj.variables["proj"].latitude_of_projection_origin,
-        )
-        Lon = nc_data_obj.variables["y"][:] * 1000 + x_center
-        Lat = nc_data_obj.variables["x"][:] * 1000 + y_center
-        precip_arr = np.asarray(
-            nc_data_obj.variables["rainfall_depth"]
-        )  # read data into an array
-        # the upper-left and lower-right coordinates of the image
-        LonMin, LatMax, LonMax, LatMin = [Lon.min(), Lat.max(), Lon.max(), Lat.min()]
-
-        # resolution calculation
-        N_Lat = len(Lat)
-        N_Lon = len(Lon)
-        Lon_Res = (LonMax - LonMin) / (float(N_Lon) - 1)
-        Lat_Res = (LatMax - LatMin) / (float(N_Lat) - 1)
-
-        for i in range(len(precip_arr[:])):
-            # to create. asc file
-            driver = gdal.GetDriverByName("GTiff")
-            out_tif_name = os.path.join(
-                Output_folder, str(nc_data_obj.variables["time"][i]) + ".asc"
-            )
-            out_tif = driver.Create(out_tif_name, N_Lon, N_Lat, 1, gdal.GDT_Float32)
-
-            #  set the display range of the image
-            # -Lat_Res must be - the
-            geotransform = (LonMin, Lon_Res, 0, LatMax, 0, -Lat_Res)
-            out_tif.SetGeoTransform(geotransform)
-
-            # get geographic coordinate system information to select the desired geographic coordinate system
-            srs = osr.SpatialReference()
-            srs.ImportFromEPSG(3577)  #  the coordinate system of the output
-            out_tif.SetProjection(
-                srs.ExportToWkt()
-            )  #  give the new layer projection information
-
-            # data write
-            out_tif.GetRasterBand(1).WriteArray(
-                precip_arr[i]
-            )  #  writes data to memory, not to disk at this time
-            out_tif.FlushCache()  #  write data to hard disk
-            out_tif = None  #  note that the tif file must be closed

@@ -36,7 +36,8 @@ class ProcessFlash:
         self.convert_flt_to_tiff()
         logger.info("Tuflow results converted to tiff")
         self.post_raster_to_lizard()
-        self.post_timeseries()
+        if self.settings.waterlevel_result_uuid_file:
+            self.post_timeseries()
 
     def process_bom(self):
         self.NC_to_tiffs(Path("temp"))
@@ -157,19 +158,10 @@ class ProcessFlash:
             url = TIMESERIES_URL + row["ts_uuid"]
             requests.post(url=url, data=timeserie, headers=headers)
 
-    def reproject_bom(self, x, y):
-        transformer = Transformer.from_proj(Proj("epsg:4326"), Proj("epsg:3577"))
-        x2, y2 = transformer.transform(y, x)
-        return x2, y2
-
     def NC_to_tiffs(self, Output_folder):
         nc_data_obj = nc.Dataset(self.settings.netcdf_rainfall_file)
-        x_center, y_center = self.reproject_bom(
-            nc_data_obj.variables["proj"].longitude_of_central_meridian,
-            nc_data_obj.variables["proj"].latitude_of_projection_origin,
-        )
-        Lon = nc_data_obj.variables["y"][:] * 1000 + x_center
-        Lat = nc_data_obj.variables["x"][:] * 1000 + y_center
+        Lon = nc_data_obj.variables["y"][:]
+        Lat = nc_data_obj.variables["x"][:]
         precip_arr = np.asarray(
             nc_data_obj.variables["rainfall_depth"]
         )  # read data into an array
@@ -197,7 +189,7 @@ class ProcessFlash:
 
             # get geographic coordinate system information to select the desired geographic coordinate system
             srs = osr.SpatialReference()
-            srs.ImportFromEPSG(3577)  #  the coordinate system of the output
+            srs.ImportFromEPSG(7856)  #  the coordinate system of the output
             out_tif.SetProjection(
                 srs.ExportToWkt()
             )  #  give the new layer projection information

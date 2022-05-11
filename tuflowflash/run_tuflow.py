@@ -62,4 +62,4 @@ class TuflowSimulation:
         if erf_result_file.exists():
             shutil.copyfile(erf_result_file, erf_input_file)
         else:
-            raise MissingFileException("Source erf file %s not found", erf_result_file)
+            logger.info("No erf file found")

@@ -64,7 +64,6 @@ def main():
         # Future precipitation
         if settings.get_future_precipitation:
             data_prepper.get_future_precipitation()
-            data_prepper.NC_to_asci(Path(r"..\bc_dbase\RFG"))
         else:
             logger.info("not gathering future rainfall data, skipping..")
 
@@ -79,7 +78,7 @@ def main():
         post_processer = post_processing.ProcessFlash(settings)
         if settings.post_to_lizard:
             post_processer.process_tuflow()
-            post_processer.process_bom()
+            #post_processer.process_bom()
         else:
             logger.info("Not uploading files to Lizard, skipping..")
 
