@@ -133,7 +133,7 @@ class prepareData:
         return
 
     def download_bom_forecast_data(self,bomfile):
-        tmp_rainfile = Path("temp/"+file + "/rain.nc.gz")
+        tmp_rainfile = Path("temp/"+bomfile + "/rain.nc.gz")
             
         with open(tmp_rainfile, "wb") as f:
             ftp_server.retrbinary(f"RETR {bomfile}", f.write)
@@ -141,7 +141,7 @@ class prepareData:
         with gzip.open(file + "/rain.nc.gz", "rb") as f_in:
             with open(file + "/rain.nc", "wb") as f_out:
                 shutil.copyfileobj(f_in, f_out)
-        logging.info("succesfully downloaded %s", file)
+        logging.info("succesfully downloaded %s", bomfile)
 
 
     def timestamps_from_netcdf(
