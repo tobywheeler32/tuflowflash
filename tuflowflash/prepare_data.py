@@ -39,13 +39,21 @@ class prepareData:
         logger.info("succesfully written rainfall file")
 
     def get_future_precipitation(self):
-        sourcePath = Path(r"temp/tmp_rain.nc")
-        self.download_bom_data()
+        sourcePath = Path(r"temp/tmp_radar_rain.nc")
+        self.download_bom_radar_data()
 
         self.write_netcdf_with_time_indexes(
             sourcePath, self.settings.start_time, self.settings.end_time
         )
-        logger.info("succesfully prepared netcdf rainfall")
+        logger.info("succesfully prepared netcdf radar rainfall")
+        
+        sourcePath = Path(r"temp/tmp_forecast_rain.nc")
+        self.download_bom_forecast_data("IDZ71015_AUS_DailyPrecip50Pct_SFC.nc.gz")
+
+        self.write_netcdf_with_time_indexes(
+            sourcePath, self.settings.start_time, self.settings.end_time
+        )
+        logger.info("succesfully prepared netcdf radar rainfall")
 
     def read_rainfall_timeseries_uuids(self):
         rainfall_timeseries = pd.read_csv(self.settings.precipitation_uuid_file)
@@ -98,7 +106,7 @@ class prepareData:
             rain_df[col].values[0] = 0
         return rain_df
 
-    def download_bom_data(self):
+    def download_bom_radar_data(self):
 
         ftp_server = ftplib.FTP(
             self.settings.bom_url,
@@ -123,6 +131,18 @@ class prepareData:
             ftp_server.retrbinary(f"RETR {bomfile}", file.write)
         ftp_server.close()
         return
+
+    def download_bom_forecast_data(bomfile):
+        tmp_rainfile = Path("temp/"+file + "/rain.nc.gz")
+            
+        with open(tmp_rainfile, "wb") as f:
+            ftp_server.retrbinary(f"RETR {bomfile}", f.write)
+            
+        with gzip.open(file + "/rain.nc.gz", "rb") as f_in:
+            with open(file + "/rain.nc", "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        logging.info("succesfully downloaded %s", file)
+
 
     def timestamps_from_netcdf(
         self, source_file: Path
