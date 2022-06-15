@@ -39,13 +39,13 @@ class prepareData:
         logger.info("succesfully written rainfall file")
 
     def get_future_precipitation(self):
-        sourcePath = Path(r"temp/tmp_radar_rain.nc")
-        self.download_bom_radar_data()
+        #sourcePath = Path(r"temp/tmp_radar_rain.nc")
+        #self.download_bom_radar_data()
 
-        self.write_netcdf_with_time_indexes(
-            sourcePath, self.settings.start_time, self.settings.end_time
-        )
-        logger.info("succesfully prepared netcdf radar rainfall")
+        #self.write_netcdf_with_time_indexes(
+        #    sourcePath, self.settings.start_time, self.settings.end_time
+        #)
+        #logger.info("succesfully prepared netcdf radar rainfall")
         
         sourcePath = Path(r"temp/tmp_forecast_rain.nc")
         self.download_bom_forecast_data("IDZ71015_AUS_DailyPrecip50Pct_SFC.nc.gz")
