@@ -6,6 +6,8 @@ from typing import List
 import cftime
 import ftplib
 import logging
+import gzip
+import shutil
 import netCDF4 as nc
 import numpy as np
 import os
