@@ -132,7 +132,7 @@ class prepareData:
         ftp_server.close()
         return
 
-    def download_bom_forecast_data(bomfile):
+    def download_bom_forecast_data(self,bomfile):
         tmp_rainfile = Path("temp/"+file + "/rain.nc.gz")
             
         with open(tmp_rainfile, "wb") as f:
