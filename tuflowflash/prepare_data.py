@@ -50,7 +50,7 @@ class prepareData:
         #logger.info("succesfully prepared netcdf radar rainfall")
         
         sourcePath = Path(r"temp/forecast_rain.nc")
-        self.download_bom_forecast_data("IDZ71015_AUS_DailyPrecip50Pct_SFC.nc.gz")
+        self.download_bom_forecast_data("IDZ71033_AUS_Precip50Pct_SFC.nc.gz")
 
         self.write_netcdf_with_time_indexes(
             sourcePath, self.settings.start_time, self.settings.end_time
