@@ -133,7 +133,14 @@ class prepareData:
         return
 
     def download_bom_forecast_data(self,bomfile):
-        tmp_rainfile = Path("temp/"+bomfile + "/rain.nc.gz")
+        ftp_server = ftplib.FTP(
+            self.settings.bom_url,
+            self.settings.bom_username,
+            self.settings.bom_password,
+        )
+        ftp_server.encoding = "utf-8"
+        ftp_server.cwd("adfd/")
+        tmp_rainfile = Path("temp/"+bomfile)
             
         with open(tmp_rainfile, "wb") as f:
             ftp_server.retrbinary(f"RETR {bomfile}", f.write)
