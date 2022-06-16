@@ -61,10 +61,15 @@ def main():
             logger.info("not gathering historical rainfall, skipping..")
 
         # Future precipitation
-        if settings.get_future_precipitation:
-            data_prepper.get_future_precipitation()
+        if settings.get_bom_forecast:
+            data_prepper.get_precipitation_forecast()
         else:
-            logger.info("not gathering future rainfall data, skipping..")
+            logger.info("not gathering bom forecast rainfall data, skipping..")
+
+        if settings.get_bom_nowcast:
+            data_prepper.get_precipitation_nowcast()
+        else:
+            logger.info("not gathering bom nowcast rainfall data, skipping..")
 
         # run simulation
         if settings.run_simulation:
@@ -94,4 +99,3 @@ def main():
             logger.error("↓↓↓↓↓   Pass --verbose to get more information   ↓↓↓↓↓")
             logger.error(e)
         return 1  # Exit code signalling an error.
-

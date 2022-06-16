@@ -40,17 +40,18 @@ class prepareData:
         rain_df.to_csv(self.settings.gauge_rainfall_file)
         logger.info("succesfully written rainfall file")
 
-    def get_future_precipitation(self):
-        #sourcePath = Path(r"temp/radar_rain.nc")
-        #self.download_bom_radar_data()
+    def get_precipitation_nowcast(self):
+        sourcePath = Path(r"temp/radar_rain.nc")
+        self.download_bom_radar_data(self.settings.bom_forecast_file)
 
-        #self.write_netcdf_with_time_indexes(
-        #    sourcePath, self.settings.start_time, self.settings.end_time
-        #)
-        #logger.info("succesfully prepared netcdf radar rainfall")
-        
+        self.write_netcdf_with_time_indexes(
+            sourcePath, self.settings.start_time, self.settings.end_time
+        )
+        logger.info("succesfully prepared netcdf radar rainfall")
+
+    def get_precipitation_forecast(self):
         sourcePath = Path(r"temp/forecast_rain.nc")
-        self.download_bom_forecast_data("IDZ71033_AUS_Precip50Pct_SFC.nc.gz")
+        self.download_bom_forecast_data(self.settings.bom_forecast_file)
 
         self.write_netcdf_with_time_indexes(
             sourcePath, self.settings.start_time, self.settings.end_time
@@ -108,8 +109,7 @@ class prepareData:
             rain_df[col].values[0] = 0
         return rain_df
 
-    def download_bom_radar_data(self):
-
+    def download_bom_radar_data(self, nowcast_file):
         ftp_server = ftplib.FTP(
             self.settings.bom_url,
             self.settings.bom_username,
@@ -122,7 +122,7 @@ class prepareData:
         files = ftp_server.nlst()
 
         for file in files:
-            if file[6:8] == "EN":
+            if file.startswith(nowcast_file):
                 radar_files.append(file)
 
         bomfile = radar_files[-1]
@@ -134,7 +134,7 @@ class prepareData:
         ftp_server.close()
         return
 
-    def download_bom_forecast_data(self,bomfile):
+    def download_bom_forecast_data(self, bomfile):
         ftp_server = ftplib.FTP(
             self.settings.bom_url,
             self.settings.bom_username,
@@ -142,16 +142,15 @@ class prepareData:
         )
         ftp_server.encoding = "utf-8"
         ftp_server.cwd("adfd/")
-        tmp_rainfile = Path("temp/"+bomfile)
-            
+        tmp_rainfile = Path("temp/" + bomfile)
+
         with open(tmp_rainfile, "wb") as f:
             ftp_server.retrbinary(f"RETR {bomfile}", f.write)
-            
+
         with gzip.open(tmp_rainfile, "rb") as f_in:
             with open("temp/forecast_rain.nc", "wb") as f_out:
                 shutil.copyfileobj(f_in, f_out)
         logging.info("succesfully downloaded %s", bomfile)
-
 
     def timestamps_from_netcdf(
         self, source_file: Path
@@ -174,7 +173,6 @@ class prepareData:
         return p50_index
 
     def write_new_netcdf(self, source_file: Path, time_indexes: List):
-
         source = nc.Dataset(source_file)
         x_center, y_center = self.reproject_bom(
             source.variables["proj"].longitude_of_central_meridian,

@@ -23,13 +23,20 @@ lizard_settings = {
 
 switches_settings = {
     "get_historical_precipitation": bool,
-    "get_future_precipitation": bool,
+    "get_bom_forecast": bool,
+    "get_bom_nowcast": bool,
     "run_simulation": bool,
     "post_to_lizard": bool,
     "archive_simulation": bool,
 }
 
-bom_settings = {"bom_username": str, "bom_password": str, "bom_url": str}
+bom_settings = {
+    "bom_username": str,
+    "bom_password": str,
+    "bom_url": str,
+    "bom_forecast_file": str,
+    "bom_nowcast_file": str,
+}
 
 
 class MissingFileException(Exception):
@@ -113,25 +120,17 @@ class FlashSettings:
         # maak de output van deze functie aan
         for variable, datatype in variables.items():
             value = self.config.get(variable_header, variable)
-            if len(value)>0:
+            if len(value) > 0:
                 try:
                     if datatype == int:
-                        setattr(
-                            self, variable, int(value)
-                        )
+                        setattr(self, variable, int(value))
                     if datatype == Path:
-                        setattr(
-                            self, variable, Path(value)
-                        )
+                        setattr(self, variable, Path(value))
                     if datatype == str:
-                        setattr(
-                            self, variable, str(value)
-                        )
+                        setattr(self, variable, str(value))
                     if datatype == bool:
                         setattr(
-                            self,
-                            variable,
-                            value.lower() == "true",
+                            self, variable, value.lower() == "true",
                         )
                 except:
                     raise MissingSettingException(
