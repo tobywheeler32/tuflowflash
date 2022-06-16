@@ -129,7 +129,10 @@ class FlashSettings:
                     if datatype == int:
                         setattr(self, variable, int(value))
                     if datatype == Path:
-                        setattr(self, variable, Path(value))
+                        try:
+                            setattr(self, variable, Path(value))
+                        except:
+                            logger.warning("no value found for %s",variable)
                     if datatype == str:
                         setattr(self, variable, str(value))
                     if datatype == bool:

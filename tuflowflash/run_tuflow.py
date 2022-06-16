@@ -40,7 +40,8 @@ class TuflowSimulation:
             if returncode != 0:
                 raise ValueError("Executable terminated, see log file")
             if self.settings.manage_states:
-                self.save_state()
+                if hasattr(self.settings,"export_states_folder"):
+                    self.save_state()
             logger.info("Tuflow simulation finished")
         except (ValueError, IndexError):
             exit("Executable terminated, see log file")
@@ -51,6 +52,8 @@ class TuflowSimulation:
         states.sort(key=lambda x: os.path.getmtime(x))
         if states:
             shutil.copyfile(states[-1], str(self.settings.tcf_file).replace(".tcf", ".trf"))
+        else:
+            shutil.copyfile(self.settings.initial_states_folder/"cold_state.trf", str(self.settings.tcf_file).replace(".tcf", ".trf"))
 
     def save_state(self):
         tcf_file = str(self.settings.tcf_file)
