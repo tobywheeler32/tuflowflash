@@ -60,7 +60,7 @@ class ProcessFlash:
             )
         elif hasattr(self.settings, "netcdf_nowcast_rainfall_file"):
             shutil.copyfile(
-                self.settings.netcdf_forecast_rainfall_file,
+                self.settings.netcdf_nowcast_rainfall_file,
                 os.path.join(result_folder, "netcdf_rain.nc"),
             )
         if hasattr(self.settings, "gauge_rainfall_file"):
