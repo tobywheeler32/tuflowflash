@@ -8,7 +8,10 @@ logger = logging.getLogger(__name__)
 Tuflow_settings = {
     "tuflow_executable": str,
     "tcf_file": Path,
-    "prepare_state_for_next_run": bool,
+    "manage_states": bool,
+    "initial_states_folder": Path,
+    "export_states_folder": Path,
+    "states_expiry_time_days": int,
     "gauge_rainfall_file": Path,
     "netcdf_forecast_rainfall_file": Path,
     "netcdf_nowcast_rainfall_file": Path,
