@@ -2,6 +2,7 @@ import configparser as ConfigParser
 import datetime
 import logging
 from pathlib import Path
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ lizard_settings = {
     "depth_raster_uuid": str,
     "rainfall_raster_uuid": str,
     "waterlevel_result_uuid_file": Path,
+    "raster_upload_list": list,
 }
 
 switches_settings = {
@@ -140,7 +142,13 @@ class FlashSettings:
                         setattr(
                             self, variable, value.lower() == "true",
                         )
+                    if datatype == list:
+                        input_list = string_to_list(variable)
+                        setattr(self,variable,input_list)
                 except:
                     raise MissingSettingException(
                         f"Setting: '{variable}' is missing in " f"{self.settingsFile}."
                     )
+
+def string_to_list(string):
+    return string.split(",")

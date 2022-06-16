@@ -83,10 +83,11 @@ class ProcessFlash:
 
     def convert_flt_to_tiff(self):
         gdal.UseExceptions()
-        filenames = glob.glob(
-            os.path.join(self.settings.output_folder, "grids", "*_d_Max*.flt")
-        )
-        for file in filenames:
+        file_path_list=[]
+        for file in self.settings.raster_upload_list:
+            file_path_list.append(os.path.join(self.settings.output_folder, "grids", file+".flt")
+
+        for file in file_path_list:
             # load dem raster file
             data = gdal.Open(file, gdalconst.GA_ReadOnly)
             nodata = data.GetRasterBand(1).GetNoDataValue()
@@ -159,8 +160,6 @@ class ProcessFlash:
             timeserie = self.create_post_element(results_dataframe[row["po_name"]])
             url = TIMESERIES_URL + row["ts_uuid"] +'/events/'
             requests.post(url=url, data=json.dumps(timeserie), headers=headers)
-
-
 
     def NC_to_tiffs(self, Output_folder):
         nc_data_obj = nc.Dataset(self.settings.netcdf_rainfall_file)
