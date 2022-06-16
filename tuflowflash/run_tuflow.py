@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from pathlib import Path
 import glob
-import datetime
+from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
