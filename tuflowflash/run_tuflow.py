@@ -60,7 +60,7 @@ class TuflowSimulation:
         )
 
         if trf_result_file.exists():
-            shutil.copyfile(trf_result_file, self.settings.export_states_folder/"warm_state_{}.trf".format(datetime.now().strftime("%Y%m%d%H"))
+            shutil.copyfile(trf_result_file, self.settings.export_states_folder/"warm_state_{}.trf".format(datetime.now().strftime("%Y%m%d%H")))
         else:
             raise MissingFileException("Source trf file %s not found", trf_result_file)
 
@@ -70,6 +70,6 @@ class TuflowSimulation:
         )
 
         if erf_result_file.exists():
-            shutil.copyfile(erf_result_file, self.settings.export_states_folder/"warm_state_{}.erf".format(datetime.now().strftime("%Y%m%d%H"))
+            shutil.copyfile(erf_result_file, self.settings.export_states_folder/"warm_state_{}.erf".format(datetime.now().strftime("%Y%m%d%H")))
         else:
             logger.info("No erf file found")
