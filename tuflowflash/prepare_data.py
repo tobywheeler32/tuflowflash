@@ -178,7 +178,7 @@ class prepareData:
             source.variables["proj"].longitude_of_central_meridian,
             source.variables["proj"].latitude_of_projection_origin,
         )
-        target = nc.Dataset(self.settings.netcdf_rainfall_file, mode="w")
+        target = nc.Dataset(self.settings.netcdf_nowcast_rainfall_file, mode="w")
         p50_index = self.get_p50_netcdf_rainfall(source)
         # Create the dimensions of the file.
         for name, dim in source.dimensions.items():

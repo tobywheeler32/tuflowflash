@@ -10,7 +10,8 @@ Tuflow_settings = {
     "tcf_file": Path,
     "prepare_state_for_next_run": bool,
     "gauge_rainfall_file": Path,
-    "netcdf_rainfall_file": Path,
+    "netcdf_forecast_rainfall_file": Path,
+    "netcdf_nowcast_rainfall_file": Path,
 }
 
 lizard_settings = {
