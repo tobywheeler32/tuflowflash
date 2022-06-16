@@ -15,6 +15,7 @@ Tuflow_settings = {
     "gauge_rainfall_file": Path,
     "netcdf_forecast_rainfall_file": Path,
     "netcdf_nowcast_rainfall_file": Path,
+    "archive_folder": Path,
 }
 
 lizard_settings = {

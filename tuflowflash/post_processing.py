@@ -47,7 +47,7 @@ class ProcessFlash:
         folder_time_string = (
             str(self.settings.start_time).replace(":", "_").replace(" ", "_")
         )
-        result_folder = Path("../results/results_" + folder_time_string)
+        result_folder = self.settings.archive_folder/"results_" + folder_time_string
         os.mkdir(result_folder)
         shutil.copytree("log", os.path.join(result_folder, "log"))
         shutil.copytree(
