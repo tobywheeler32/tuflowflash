@@ -85,10 +85,9 @@ class ProcessFlash:
         gdal.UseExceptions()
         file_path_list=[]
         for file in self.settings.raster_upload_list:
-            file_path_list.append(os.path.join(self.settings.output_folder, "grids", file+".flt")
+            file_path_list.append(os.path.join(self.settings.output_folder, "grids", file+".flt"))
 
         for file in file_path_list:
-            # load dem raster file
             data = gdal.Open(file, gdalconst.GA_ReadOnly)
             nodata = data.GetRasterBand(1).GetNoDataValue()
             data_array = data.GetRasterBand(1).ReadAsArray()
