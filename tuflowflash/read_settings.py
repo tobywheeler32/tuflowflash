@@ -143,7 +143,7 @@ class FlashSettings:
                             self, variable, value.lower() == "true",
                         )
                     if datatype == list:
-                        input_list = string_to_list(variable)
+                        input_list = string_to_list(value)
                         setattr(self,variable,input_list)
                 except:
                     raise MissingSettingException(
