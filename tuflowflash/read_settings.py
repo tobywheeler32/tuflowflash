@@ -55,7 +55,7 @@ class MissingSettingException(Exception):
 
 
 class FlashSettings:
-    def __init__(self, settingsFile: Path):
+    def __init__(self, settingsFile: Path, reference_time=None):
         self.settingsFile = settingsFile
         self.config = ConfigParser.RawConfigParser()
         try:
@@ -72,10 +72,10 @@ class FlashSettings:
         self.read_tcf_parameters(self.tcf_file)
 
         self.start_time = self.convert_relative_time(
-            self.config.get("general", "relative_start_time")
+            self.config.get("general", "relative_start_time"),reference_time
         )
         self.end_time = self.convert_relative_time(
-            self.config.get("general", "relative_end_time")
+            self.config.get("general", "relative_end_time"),reference_time
         )
 
         logger.info("settings have been read")
@@ -113,14 +113,17 @@ class FlashSettings:
         rounding = (seconds + roundTo / 2) // roundTo * roundTo
         return dt + datetime.timedelta(0, rounding - seconds, -dt.microsecond)
 
-    def convert_relative_time(self, relative_time):
-        now = self.roundTime()
-        if relative_time.startswith("-"):
-            time = now - datetime.timedelta(hours=float(relative_time.strip("-")))
-        elif relative_time.startswith("+"):
-            time = now + datetime.timedelta(hours=float(relative_time.strip("-")))
+    def convert_relative_time(self, relative_time,reference_time=None):
+        if reference_time is None:
+            reference_time = self.roundTime()
         else:
-            time = now + datetime.timedelta(hours=float(relative_time))
+            reference_time = datetime.datetime.strptime(reference_time, "%Y-%m-%dT%H:%M")
+        if relative_time.startswith("-"):
+            time = reference_time - datetime.timedelta(hours=float(relative_time.strip("-")))
+        elif relative_time.startswith("+"):
+            time = reference_time + datetime.timedelta(hours=float(relative_time.strip("-")))
+        else:
+            time = reference_time + datetime.timedelta(hours=float(relative_time))
         return time
 
     def read_settings_file(self, variables, variable_header):

@@ -31,6 +31,13 @@ def get_parser():
 
     # OPTIONAL ARGUMENTS
     parser.add_argument(
+        "--reference_time",
+        dest="reference_time",
+        default=None,
+        help="reference start time in format (yyyy-mm-ddThh:ss)",
+    )
+
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -51,7 +58,7 @@ def main():
         log_level = logging.INFO
     logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
 
-    settings = read_settings.FlashSettings(options.settings_file)
+    settings = read_settings.FlashSettings(options.settings_file,reference_time)
     try:
         # Historical precipitation
         data_prepper = prepare_data.prepareData(settings)
