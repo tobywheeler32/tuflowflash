@@ -82,7 +82,7 @@ def main():
         post_processer = post_processing.ProcessFlash(settings)
         if settings.post_to_lizard:
             post_processer.process_tuflow()
-            #post_processer.process_bom()
+            #post_processer.upload_bom_precipitation()
         else:
             logger.info("Not uploading files to Lizard, skipping..")
 

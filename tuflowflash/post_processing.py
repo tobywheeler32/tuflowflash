@@ -34,20 +34,47 @@ class ProcessFlash:
     def process_tuflow(self):
         self.convert_flt_to_tiff()
         logger.info("Tuflow results converted to tiff")
-        self.post_raster_to_lizard()
+        filenames = glob.glob(
+            os.path.join(self.settings.output_folder, "grids", "*[!Max]*.tif")
+        )
+        timestamps = []
+        for file in filenames:
+            file_stem = Path(file).stem
+            file_timestamp = float(file_stem[-3:])
+            timestamp = self.settings.start_time + datetime.timedelta(
+                hours=float(file_timestamp)
+            )
+            timestamps.append(timestamp)
+        self.post_temporal_raster_to_lizard(
+            filenames, self.settings.depth_raster_uuid, timestamps
+        )
+        logger.info("Tuflow results posted to Lizard")
         if hasattr(self.settings, "waterlevel_result_uuid_file"):
             self.post_timeseries()
 
-    def process_bom(self):
+    def upload_bom_precipitation(self):
         self.NC_to_tiffs(Path("temp"))
-        self.post_bom_to_lizard()
-        logger.info("Tuflow results posted to Lizard")
+
+        filenames = glob.glob(os.path.join("temp", "*.tif"))
+        timestamps = []
+        for file in filenames:
+            rain_timestamp = Path(file).stem
+            timestamp = self.settings.start_time + datetime.timedelta(
+                hours=float(rain_timestamp)
+            )
+            timestamps.append(timestamp)
+        self.post_temporal_raster_to_lizard(
+            filenames, self.settings.rainfall_raster_uuid, timestamps
+        )
+        logger.info("Bom rainfall posted to Lizard")
 
     def archive_simulation(self):
         folder_time_string = (
             str(self.settings.start_time).replace(":", "_").replace(" ", "_")
         )
-        result_folder = os.path.join(self.settings.archive_folder,"results_" + folder_time_string)
+        result_folder = os.path.join(
+            self.settings.archive_folder, "results_" + folder_time_string
+        )
         os.mkdir(result_folder)
         shutil.copytree("log", os.path.join(result_folder, "log"))
         shutil.copytree(
@@ -73,7 +100,7 @@ class ProcessFlash:
         logging.info("succesfully archived files to: %s", result_folder)
 
     def create_projection(self):
-        """obtain wkt definition of the tuflow spatial projection. Used to write 
+        """obtain wkt definition of the tuflow spatial projection. Used to write
         geotiff format files with gdal.
         """
         srs = osr.SpatialReference()
@@ -83,9 +110,11 @@ class ProcessFlash:
 
     def convert_flt_to_tiff(self):
         gdal.UseExceptions()
-        file_path_list=[]
+        file_path_list = []
         for file in self.settings.raster_upload_list:
-            file_path_list.append(os.path.join(self.settings.output_folder, "grids", file+".flt"))
+            file_path_list.append(
+                os.path.join(self.settings.output_folder, "grids", file + ".flt")
+            )
 
         for file in file_path_list:
             data = gdal.Open(file, gdalconst.GA_ReadOnly)
@@ -157,7 +186,7 @@ class ProcessFlash:
         results_dataframe.set_index("datetime", inplace=True)
         for index, row in result_ts_uuids.iterrows():
             timeserie = self.create_post_element(results_dataframe[row["po_name"]])
-            url = TIMESERIES_URL + row["ts_uuid"] +'/events/'
+            url = TIMESERIES_URL + row["ts_uuid"] + "/events/"
             requests.post(url=url, data=json.dumps(timeserie), headers=headers)
 
     def NC_to_tiffs(self, Output_folder):
@@ -203,22 +232,17 @@ class ProcessFlash:
             out_tif.FlushCache()  #  write data to hard disk
             out_tif = None  #  note that the tif file must be closed
 
-    def post_bom_to_lizard(self):
-        filenames = glob.glob(os.path.join("temp", "*.tif"))
+    def post_temporal_raster_to_lizard(self, filenames, raster_uuid, timestamps):
         username = "__key__"
         password = self.settings.apikey
         headers = {
             "username": username,
             "password": password,
         }
-        raster_url = RASTER_SOURCES_URL + self.settings.rainfall_raster_uuid + "/"
+        raster_url = RASTER_SOURCES_URL + raster_uuid + "/"
         url = raster_url + "data/"
 
-        for file in filenames:
-            rain_timestamp = Path(file).stem
-            timestamp = self.settings.start_time + datetime.timedelta(
-                hours=float(rain_timestamp)
-            )
+        for file, timestamp in zip(filenames, timestamps):
             logger.debug("posting file %s to lizard", file)
             lizard_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:00Z")
             file = {"file": open(file, "rb")}
