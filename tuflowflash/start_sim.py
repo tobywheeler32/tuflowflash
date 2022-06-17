@@ -58,7 +58,7 @@ def main():
         log_level = logging.INFO
     logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
 
-    settings = read_settings.FlashSettings(options.settings_file,reference_time)
+    settings = read_settings.FlashSettings(options.settings_file,options.reference_time)
     try:
         # Historical precipitation
         data_prepper = prepare_data.prepareData(settings)
