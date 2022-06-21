@@ -240,6 +240,12 @@ class ProcessFlash:
             "username": username,
             "password": password,
         }
+        
+        json_headers = {
+            "username": username,
+            "password": password,
+            "Content-Type": "application/json",
+        }
         raster_url = RASTER_SOURCES_URL + raster_uuid + "/"
         url = raster_url + "data/"
 
@@ -250,7 +256,7 @@ class ProcessFlash:
                 "start": "2010-01-01T00:00:00Z",
                 "stop": lizard_timestamp
             }
-            requests.delete(url=url,data=delete_timerange,headers=headers)
+            requests.delete(url=url,data=delete_timerange,headers=json_headers)
             file = {"file": open(file, "rb")}
             data = {"timestamp": lizard_timestamp}
             requests.post(url=url, data=data, files=file, headers=headers)
