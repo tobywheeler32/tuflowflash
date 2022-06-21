@@ -32,7 +32,9 @@ class prepareData:
         logger.info("Started gathering historical precipitation data")
         rainfall_gauges_uuids = self.read_rainfall_timeseries_uuids()
 
-        rain_df = self.get_lizard_timeseries(rainfall_gauges_uuids,)
+        rain_df = self.get_lizard_timeseries(
+            rainfall_gauges_uuids,
+        )
         logger.info("gathered lizard rainfall timeseries")
 
         ## preprocess rain data
@@ -45,7 +47,10 @@ class prepareData:
         self.download_bom_radar_data(self.settings.bom_nowcast_file)
 
         self.write_netcdf_with_time_indexes(
-            sourcePath, self.settings.netcdf_nowcast_rainfall_file, self.settings.start_time, self.settings.end_time
+            sourcePath,
+            self.settings.netcdf_nowcast_rainfall_file,
+            self.settings.start_time,
+            self.settings.end_time,
         )
         logger.info("succesfully prepared netcdf radar rainfall")
 
@@ -53,10 +58,33 @@ class prepareData:
         sourcePath = Path(r"temp/forecast_rain.nc")
         self.download_bom_forecast_data(self.settings.bom_forecast_file)
 
-        self.write_netcdf_with_time_indexes(
-            sourcePath, self.settings.start_time, self.settings.end_time
+        self.write_netcdf_forecast(
+            self,
+            sourcePath,
+            self.settings.netcdf_forecast_rainfall_file,
+            self.settings.forecast_clipshape,
+            self.settings.start_time,
+            self.settings.end_time,
         )
         logger.info("succesfully prepared netcdf radar rainfall")
+
+    def write_netcdf_forecast(
+        self, sourcePath, output_file, clipshape, start_time, end_time
+    ):
+        geodf = geopandas.read_file(clipshape)
+        xds = rioxarray.open_rasterio(sourcePath)
+        xds = xds.rio.write_crs(4326)
+        source = xds.rio.clip(geodf.geometry.apply(mapping), geodf.crs)
+        xds_lonlat = source.rio.reproject("EPSG:7856")
+        xds_lonlat = xds_lonlat.rename("rainfall_depth")
+        xds_lonlat[:, :, :] = np.where(
+            xds_lonlat == xds_lonlat.attrs["_FillValue"], 0, xds_lonlat
+        )
+        xds_lonlat = xds_lonlat.sel(time=slice(start_time, end_time))
+        xds_lonlat = xds_lonlat.assign_coords(
+            time=np.arange(0, len(xds_lonlat["time"][:]) * 3, 3).tolist()
+        )
+        xds_lonlat.to_netcdf(output_file)
 
     def read_rainfall_timeseries_uuids(self):
         rainfall_timeseries = pd.read_csv(self.settings.precipitation_uuid_file)
@@ -261,7 +289,9 @@ class prepareData:
         target.close()
         source.close()
 
-    def write_netcdf_with_time_indexes(self, source_file: Path, dest_file: Path, start, end):
+    def write_netcdf_with_time_indexes(
+        self, source_file: Path, dest_file: Path, start, end
+    ):
         """Return netcdf file with only time indexes"""
         if not source_file.exists():
             raise MissingFileException("Source netcdf file %s not found", source_file)
@@ -279,9 +309,7 @@ class prepareData:
         )
 
         self.write_new_netcdf(source_file, dest_file, time_indexes)
-        logger.debug(
-            "Wrote new time-index-only netcdf to %s", dest_file
-        )
+        logger.debug("Wrote new time-index-only netcdf to %s", dest_file)
 
     def reproject_bom(self, x, y):
         transformer = Transformer.from_proj(Proj("epsg:4326"), Proj("epsg:7856"))

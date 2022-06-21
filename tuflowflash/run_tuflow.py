@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 import glob
 from datetime import datetime
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,20 +41,25 @@ class TuflowSimulation:
             if returncode != 0:
                 raise ValueError("Executable terminated, see log file")
             if self.settings.manage_states:
-                if hasattr(self.settings,"export_states_folder"):
+                if hasattr(self.settings, "export_states_folder"):
                     self.save_state()
             logger.info("Tuflow simulation finished")
         except (ValueError, IndexError):
             exit("Executable terminated, see log file")
 
     def prepare_state(self):
-        search_dir=self.settings.initial_states_folder.stem
-        states=list(filter(os.path.isfile, glob.glob(search_dir + "/warm_*.trf")))
+        search_dir = self.settings.initial_states_folder.stem
+        states = list(filter(os.path.isfile, glob.glob(search_dir + "/warm_*.trf")))
         states.sort(key=lambda x: os.path.getmtime(x))
         if states:
-            shutil.copyfile(states[-1], str(self.settings.tcf_file).replace(".tcf", ".trf"))
+            shutil.copyfile(
+                states[-1], str(self.settings.tcf_file).replace(".tcf", ".trf")
+            )
         else:
-            shutil.copyfile(self.settings.initial_states_folder/"cold_state.trf", str(self.settings.tcf_file).replace(".tcf", ".trf"))
+            shutil.copyfile(
+                self.settings.initial_states_folder / "cold_state.trf",
+                str(self.settings.tcf_file).replace(".tcf", ".trf"),
+            )
 
     def save_state(self):
         tcf_file = str(self.settings.tcf_file)
@@ -63,7 +69,11 @@ class TuflowSimulation:
         )
 
         if trf_result_file.exists():
-            shutil.copyfile(trf_result_file, self.settings.export_states_folder/"warm_state_{}.trf".format(datetime.now().strftime("%Y%m%d%H")))
+            shutil.copyfile(
+                trf_result_file,
+                self.settings.export_states_folder
+                / "warm_state_{}.trf".format(datetime.now().strftime("%Y%m%d%H")),
+            )
         else:
             raise MissingFileException("Source trf file %s not found", trf_result_file)
 
@@ -73,6 +83,10 @@ class TuflowSimulation:
         )
 
         if erf_result_file.exists():
-            shutil.copyfile(erf_result_file, self.settings.export_states_folder/"warm_state_{}.erf".format(datetime.now().strftime("%Y%m%d%H")))
+            shutil.copyfile(
+                erf_result_file,
+                self.settings.export_states_folder
+                / "warm_state_{}.erf".format(datetime.now().strftime("%Y%m%d%H")),
+            )
         else:
             logger.info("No erf file found")

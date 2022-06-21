@@ -17,7 +17,7 @@ OWN_EXCEPTIONS = (
 
 
 def get_parser():
-    """ Return argument parser. """
+    """Return argument parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     # POSITIONAL ARGUMENTS
 
@@ -49,7 +49,7 @@ def get_parser():
 
 
 def main():
-    """ Call command with args from parser. """
+    """Call command with args from parser."""
     ## read settings
     options = get_parser().parse_args()
     if options.verbose:
@@ -58,7 +58,9 @@ def main():
         log_level = logging.INFO
     logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
 
-    settings = read_settings.FlashSettings(options.settings_file,options.reference_time)
+    settings = read_settings.FlashSettings(
+        options.settings_file, options.reference_time
+    )
     try:
         # Historical precipitation
         data_prepper = prepare_data.prepareData(settings)
@@ -89,7 +91,7 @@ def main():
         post_processer = post_processing.ProcessFlash(settings)
         if settings.post_to_lizard:
             post_processer.process_tuflow()
-            #post_processer.upload_bom_precipitation()
+            # post_processer.upload_bom_precipitation()
         else:
             logger.info("Not uploading files to Lizard, skipping..")
 

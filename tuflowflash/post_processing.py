@@ -38,7 +38,11 @@ class ProcessFlash:
             os.path.join(self.settings.output_folder, "grids", "*[!Max]*.tif")
         )
         timestamps = []
-        for file in filenames:
+        for (
+            file
+        ) in (
+            filenames
+        ):  # please note: will cause problems with water level rasters as well
             file_stem = Path(file).stem
             file_timestamp = float(file_stem[-3:])
             timestamp = self.settings.start_time + datetime.timedelta(
@@ -111,7 +115,7 @@ class ProcessFlash:
     def convert_flt_to_tiff(self):
         gdal.UseExceptions()
         file_path_list = []
-        for file in self.settings.raster_upload_list:
+        for file in self.settings.waterdepth_raster_upload_list:
             file_path_list.append(
                 os.path.join(self.settings.output_folder, "grids", file + ".flt")
             )
@@ -187,7 +191,7 @@ class ProcessFlash:
         for index, row in result_ts_uuids.iterrows():
             timeserie = self.create_post_element(results_dataframe[row["po_name"]])
             url = TIMESERIES_URL + row["ts_uuid"] + "/events/"
-            requests.delete(url=url,headers=headers)
+            requests.delete(url=url, headers=headers)
             requests.post(url=url, data=json.dumps(timeserie), headers=headers)
 
     def NC_to_tiffs(self, Output_folder):
@@ -240,7 +244,7 @@ class ProcessFlash:
             "username": username,
             "password": password,
         }
-        
+
         json_headers = {
             "username": username,
             "password": password,
@@ -252,7 +256,7 @@ class ProcessFlash:
         for file, timestamp in zip(filenames, timestamps):
             logger.debug("posting file %s to lizard", file)
             lizard_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:00Z")
-            requests.delete(url=url,headers=json_headers)
+            requests.delete(url=url, headers=json_headers)
             file = {"file": open(file, "rb")}
             data = {"timestamp": lizard_timestamp}
             requests.post(url=url, data=data, files=file, headers=headers)

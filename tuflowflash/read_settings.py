@@ -23,9 +23,11 @@ lizard_settings = {
     "apikey": str,
     "precipitation_uuid_file": Path,
     "depth_raster_uuid": str,
+    "waterlevel_raster_uuid": str,
     "rainfall_raster_uuid": str,
     "waterlevel_result_uuid_file": Path,
-    "raster_upload_list": list,
+    "waterdepth_raster_upload_list": list,
+    "waterlevel_raster_upload_list": list,
 }
 
 switches_settings = {
@@ -43,6 +45,7 @@ bom_settings = {
     "bom_url": str,
     "bom_forecast_file": str,
     "bom_nowcast_file": str,
+    "forecast_clipshape": Path,
 }
 
 
@@ -72,10 +75,10 @@ class FlashSettings:
         self.read_tcf_parameters(self.tcf_file)
 
         self.start_time = self.convert_relative_time(
-            self.config.get("general", "relative_start_time"),reference_time
+            self.config.get("general", "relative_start_time"), reference_time
         )
         self.end_time = self.convert_relative_time(
-            self.config.get("general", "relative_end_time"),reference_time
+            self.config.get("general", "relative_end_time"), reference_time
         )
 
         logger.info("settings have been read")
@@ -113,15 +116,21 @@ class FlashSettings:
         rounding = (seconds + roundTo / 2) // roundTo * roundTo
         return dt + datetime.timedelta(0, rounding - seconds, -dt.microsecond)
 
-    def convert_relative_time(self, relative_time,reference_time=None):
+    def convert_relative_time(self, relative_time, reference_time=None):
         if reference_time is None:
             reference_time = self.roundTime()
         else:
-            reference_time = datetime.datetime.strptime(reference_time, "%Y-%m-%dT%H:%M")
+            reference_time = datetime.datetime.strptime(
+                reference_time, "%Y-%m-%dT%H:%M"
+            )
         if relative_time.startswith("-"):
-            time = reference_time - datetime.timedelta(hours=float(relative_time.strip("-")))
+            time = reference_time - datetime.timedelta(
+                hours=float(relative_time.strip("-"))
+            )
         elif relative_time.startswith("+"):
-            time = reference_time + datetime.timedelta(hours=float(relative_time.strip("-")))
+            time = reference_time + datetime.timedelta(
+                hours=float(relative_time.strip("-"))
+            )
         else:
             time = reference_time + datetime.timedelta(hours=float(relative_time))
         return time
@@ -138,20 +147,23 @@ class FlashSettings:
                         try:
                             setattr(self, variable, Path(value))
                         except:
-                            logger.warning("no value found for %s",variable)
+                            logger.warning("no value found for %s", variable)
                     if datatype == str:
                         setattr(self, variable, str(value))
                     if datatype == bool:
                         setattr(
-                            self, variable, value.lower() == "true",
+                            self,
+                            variable,
+                            value.lower() == "true",
                         )
                     if datatype == list:
                         input_list = string_to_list(value)
-                        setattr(self,variable,input_list)
+                        setattr(self, variable, input_list)
                 except:
                     raise MissingSettingException(
                         f"Setting: '{variable}' is missing in " f"{self.settingsFile}."
                     )
+
 
 def string_to_list(string):
     return string.split(",")
