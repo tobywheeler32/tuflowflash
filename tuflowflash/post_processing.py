@@ -187,6 +187,7 @@ class ProcessFlash:
         for index, row in result_ts_uuids.iterrows():
             timeserie = self.create_post_element(results_dataframe[row["po_name"]])
             url = TIMESERIES_URL + row["ts_uuid"] + "/events/"
+            requests.delete(url=url,headers=headers)
             requests.post(url=url, data=json.dumps(timeserie), headers=headers)
 
     def NC_to_tiffs(self, Output_folder):
@@ -245,6 +246,11 @@ class ProcessFlash:
         for file, timestamp in zip(filenames, timestamps):
             logger.debug("posting file %s to lizard", file)
             lizard_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:00Z")
+            delete_timerange={
+                "start": "2010-01-01T00:00:00Z",
+                "stop": lizard_timestamp
+            }
+            requests.delete(url=url,data=delete_timerange,headers=headers)
             file = {"file": open(file, "rb")}
             data = {"timestamp": lizard_timestamp}
             requests.post(url=url, data=data, files=file, headers=headers)
