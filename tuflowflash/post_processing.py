@@ -252,11 +252,7 @@ class ProcessFlash:
         for file, timestamp in zip(filenames, timestamps):
             logger.debug("posting file %s to lizard", file)
             lizard_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:00Z")
-            delete_timerange={
-                "start": "2010-01-01T00:00:00Z",
-                "stop": lizard_timestamp
-            }
-            requests.delete(url=url,data=delete_timerange,headers=json_headers)
+            requests.delete(url=url,headers=json_headers)
             file = {"file": open(file, "rb")}
             data = {"timestamp": lizard_timestamp}
             requests.post(url=url, data=data, files=file, headers=headers)
