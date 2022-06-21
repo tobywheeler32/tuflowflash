@@ -120,7 +120,9 @@ class prepareData:
 
         radar_files = []
         files = ftp_server.nlst()
-
+        print(files)
+        print(type(files[0]))
+        print(nowcast_file)
         for file in files:
             if file.startswith(nowcast_file):
                 radar_files.append(file)
