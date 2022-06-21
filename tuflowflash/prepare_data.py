@@ -45,7 +45,7 @@ class prepareData:
         self.download_bom_radar_data(self.settings.bom_nowcast_file)
 
         self.write_netcdf_with_time_indexes(
-            sourcePath, self.settings.start_time, self.settings.end_time
+            sourcePath, self.settings.netcdf_nowcast_rainfall_file, self.settings.start_time, self.settings.end_time
         )
         logger.info("succesfully prepared netcdf radar rainfall")
 
@@ -172,13 +172,13 @@ class prepareData:
             p50_index = cum_rainfall_list.index(closest_to_p50)
         return p50_index
 
-    def write_new_netcdf(self, source_file: Path, time_indexes: List):
+    def write_new_netcdf(self, source_file: Path, dest_file: Path, time_indexes: List):
         source = nc.Dataset(source_file)
         x_center, y_center = self.reproject_bom(
             source.variables["proj"].longitude_of_central_meridian,
             source.variables["proj"].latitude_of_projection_origin,
         )
-        target = nc.Dataset(self.settings.netcdf_nowcast_rainfall_file, mode="w")
+        target = nc.Dataset(dest_file, mode="w")
         p50_index = self.get_p50_netcdf_rainfall(source)
         # Create the dimensions of the file.
         for name, dim in source.dimensions.items():
@@ -261,7 +261,7 @@ class prepareData:
         target.close()
         source.close()
 
-    def write_netcdf_with_time_indexes(self, source_file: Path, start, end):
+    def write_netcdf_with_time_indexes(self, source_file: Path, dest_file: Path, start, end):
         """Return netcdf file with only time indexes"""
         if not source_file.exists():
             raise MissingFileException("Source netcdf file %s not found", source_file)
@@ -278,9 +278,9 @@ class prepareData:
             .tolist()
         )
 
-        self.write_new_netcdf(source_file, time_indexes)
+        self.write_new_netcdf(source_file, dest_file, time_indexes)
         logger.debug(
-            "Wrote new time-index-only netcdf to %s", self.settings.netcdf_rainfall_file
+            "Wrote new time-index-only netcdf to %s", dest_file
         )
 
     def reproject_bom(self, x, y):
