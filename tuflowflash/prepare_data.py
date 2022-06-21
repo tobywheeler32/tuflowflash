@@ -13,6 +13,9 @@ import numpy as np
 import os
 import pandas as pd
 import requests
+import rioxarray
+import geopandas
+from shapely.geometry import mapping
 
 
 logger = logging.getLogger(__name__)
