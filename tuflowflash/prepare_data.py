@@ -42,7 +42,7 @@ class prepareData:
 
     def get_precipitation_nowcast(self):
         sourcePath = Path(r"temp/radar_rain.nc")
-        self.download_bom_radar_data(self.settings.bom_forecast_file)
+        self.download_bom_radar_data(self.settings.bom_nowcast_file)
 
         self.write_netcdf_with_time_indexes(
             sourcePath, self.settings.start_time, self.settings.end_time
@@ -120,9 +120,7 @@ class prepareData:
 
         radar_files = []
         files = ftp_server.nlst()
-        print(files)
-        print(type(files[0]))
-        print(nowcast_file)
+
         for file in files:
             if file.startswith(nowcast_file):
                 radar_files.append(file)
