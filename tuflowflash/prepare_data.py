@@ -55,7 +55,6 @@ class prepareData:
             self.settings.start_time,
             self.settings.end_time,
             self.settings.reference_time,
-            self.settings.tuflow_start_time
         )
         logger.info("succesfully prepared netcdf radar rainfall")
 
@@ -69,12 +68,12 @@ class prepareData:
             self.settings.forecast_clipshape,
             self.settings.start_time,
             self.settings.end_time,
-            self.settings.tuflow_start_time,
+            self.settings.reference_time,
         )
         logger.info("succesfully prepared netcdf radar rainfall")
 
     def write_forecast_netcdf_with_time_indexes(
-        self, sourcePath, output_file, clipshape, start_time, end_time, tuflow_start_time
+        self, sourcePath, output_file, clipshape, start_time, end_time, reference_time
     ):
         geodf = geopandas.read_file(clipshape)
         xds = rioxarray.open_rasterio(sourcePath)
@@ -87,7 +86,7 @@ class prepareData:
         )
         xds_lonlat = xds_lonlat.sel(time=slice(start_time, end_time))
         xds_lonlat = xds_lonlat.assign_coords(
-            time=(xds_lonlat["time"]-self.settings.reference_time)/3600000000000
+            time=(xds_lonlat["time"]-reference_time)/3600000000000
         )
         xds_lonlat.to_netcdf(output_file)
 
