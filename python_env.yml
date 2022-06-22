@@ -3,11 +3,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - gdal==3.4.2
   - netCDF4
-  - pyproj
-  - cftime
   - geopandas
-  - shapely
   - configparser
-  - argparse
