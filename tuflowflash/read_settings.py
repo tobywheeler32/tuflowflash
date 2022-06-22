@@ -16,6 +16,7 @@ Tuflow_settings = {
     "gauge_rainfall_file": Path,
     "netcdf_forecast_rainfall_file": Path,
     "netcdf_nowcast_rainfall_file": Path,
+    "netcdf_combined_rainfall_file": Path,
     "archive_folder": Path,
 }
 
@@ -46,7 +47,6 @@ bom_settings = {
     "bom_url": str,
     "bom_forecast_file": str,
     "bom_nowcast_file": str,
-    "combined_bom_file": str,
     "forecast_clipshape": Path,
 }
 

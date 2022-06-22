@@ -339,4 +339,4 @@ class prepareData:
         concatenated=xr.concat([bom_nowcast_da,bom_forecast_da],"time")
         concatenated=concatenated.fillna(0)
         print(concatenated)
-        concatenated.to_netcdf("testjeeee.nc")
+        concatenated.to_netcdf(self.settings.netcdf_combined_rainfall_file)
