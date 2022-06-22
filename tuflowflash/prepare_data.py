@@ -331,6 +331,7 @@ class prepareData:
         geodf.to_crs(7856)
         bom_nowcast_da = bom_nowcast_da.rio.clip(geodf.geometry.apply(mapping), geodf.crs)
         bom_nowcast_da[:,:,:]=np.where(bom_nowcast_da == bom_nowcast_da.attrs["_FillValue"], 0, bom_nowcast_da)
+        bom_nowcast_da=bom_nowcast_da.assign_coords(time=bom_nowcast_da["time"]/3600000000000) #because it is read as nano seconds
         print(bom_nowcast_da["time"])
         bom_forecast_da = bom_forecast_da.rio.reproject("EPSG:7856",resolution=1000)
         bom_forecast_da[:,:,:]=np.where(bom_forecast_da == bom_forecast_da.attrs["_FillValue"], 0, bom_forecast_da)
