@@ -91,7 +91,6 @@ class prepareData:
         xds_lonlat = xds_lonlat.assign_coords(
             time=(xds_lonlat["time"]-reference_time)/3600000000000
         )
-        print(xds_lonlat["time"])
         xds_lonlat.to_netcdf(output_file)
 
     def read_rainfall_timeseries_uuids(self):
@@ -283,7 +282,6 @@ class prepareData:
                 tz_offset = aus_now.utcoffset().total_seconds()/60/60
                 data = (data - reference_time.timestamp())/3600 - tz_offset
                 target.variables["time"][:] = data
-                print(target.variables["time"][:])
             elif name == "precipitation":
                 data = data[p50_index, time_indexes]
                 data = data * 0.05
@@ -333,10 +331,10 @@ class prepareData:
         geodf.to_crs(7856)
         bom_nowcast_da = bom_nowcast_da.rio.clip(geodf.geometry.apply(mapping), geodf.crs)
         bom_nowcast_da[:,:,:]=np.where(bom_nowcast_da == bom_nowcast_da.attrs["_FillValue"], 0, bom_nowcast_da)
-        print(bom_nowcast_da)
+        print(bom_nowcast_da["time"])
         bom_forecast_da = bom_forecast_da.rio.reproject("EPSG:7856",resolution=1000)
         bom_forecast_da[:,:,:]=np.where(bom_forecast_da == bom_forecast_da.attrs["_FillValue"], 0, bom_forecast_da)
-        print(bom_forecast_da)
+        print(bom_forecast_da["time"])
         concatenated=xr.concat([bom_nowcast_da,bom_forecast_da],"time")
         concatenated.fillna(0)
         print(concatenated)
