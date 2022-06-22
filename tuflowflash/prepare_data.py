@@ -14,7 +14,7 @@ import os
 import pandas as pd
 import requests
 import rioxarray
-import xarray
+import xarray as xr
 
 import geopandas
 from shapely.geometry import mapping
