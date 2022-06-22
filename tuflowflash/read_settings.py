@@ -77,6 +77,8 @@ class FlashSettings:
         self.reference_time, self.start_time = self.convert_relative_time(
             self.tuflow_start_time, reference_time
         )
+        print(self.reference_time)
+        print(self.start_time)
         self.reference_time, self.end_time = self.convert_relative_time(
             self.tuflow_end_time, reference_time
         )
