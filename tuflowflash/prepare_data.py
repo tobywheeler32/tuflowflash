@@ -92,7 +92,7 @@ class prepareData:
         print(xds_lonlat)
         print(np.arange(tuflow_start_time, len(xds_lonlat["time"][:]) * 3, 3).tolist())
         xds_lonlat = xds_lonlat.assign_coords(
-            time=xds_lonlat.assign_coords(time=(xds_lonlat["time"]-self.settings.reference_time)/3600000000000)
+            time=(xds_lonlat["time"]-self.settings.reference_time)/3600000000000)
         )
         xds_lonlat.to_netcdf(output_file)
 
