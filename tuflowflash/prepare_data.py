@@ -274,11 +274,8 @@ class prepareData:
             data = source.variables[name][:]
             # Copy the variables values.
             if name == "valid_time":
-                print(data)
                 data = data[time_indexes]
-                print(data)
-                print(reference_time.timestamp())
-                data = (data - reference_time.timestamp())/3600
+                data = (data - reference_time.timestamp())/3600/60
                 target.variables["time"][:] = data
             elif name == "precipitation":
                 data = data[p50_index, time_indexes]
@@ -304,8 +301,6 @@ class prepareData:
 
         # logger.info("Converting %s to a file with only time indexes", source_file)
         relevant_timestamps = self.timestamps_from_netcdf(source_file)
-        print(reference_time)
-        print(relevant_timestamps)
         # Figure out which timestamps are valid for the given simulation period.
         time_indexes: List = (
             np.argwhere(  # type: ignore
@@ -315,7 +310,6 @@ class prepareData:
             .flatten()
             .tolist()
         )
-        print(time_indexes)
         self.write_new_netcdf(source_file, dest_file, time_indexes,reference_time)
         logger.debug("Wrote new time-index-only netcdf to %s", dest_file)
 
