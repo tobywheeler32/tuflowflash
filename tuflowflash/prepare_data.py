@@ -75,9 +75,9 @@ class prepareData:
     ):
         geodf = geopandas.read_file(clipshape)
         xds = rioxarray.open_rasterio(sourcePath)
-        xds = xds.rio.write_crs(4326,resolution=5500)
+        xds = xds.rio.write_crs(4326)
         source = xds.rio.clip(geodf.geometry.apply(mapping), geodf.crs)
-        xds_lonlat = source.rio.reproject("EPSG:7856")
+        xds_lonlat = source.rio.reproject("EPSG:7856",resolution=5500)
         xds_lonlat = xds_lonlat.rename("rainfall_depth")
         xds_lonlat[:, :, :] = np.where(
             xds_lonlat == xds_lonlat.attrs["_FillValue"], 0, xds_lonlat
