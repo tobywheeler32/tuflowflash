@@ -329,7 +329,7 @@ class prepareData:
         bom_forecast_da = rioxarray.open_rasterio(self.settings.netcdf_forecast_rainfall_file)
         bom_nowcast_da = rioxarray.open_rasterio(self.settings.netcdf_nowcast_rainfall_file)
         bom_nowcast_da=bom_nowcast_da.rio.write_crs(7856)
-        geodf = geopandas.read_file(self.settings.clipshape)
+        geodf = geopandas.read_file(self.settings.forecast_clipshape)
         geodf.set_crs(7856)
         bom_nowcast_da = bom_nowcast_da.rio.clip(geodf.geometry.apply(mapping), geodf.crs)
         print(bom_nowcast_da)
