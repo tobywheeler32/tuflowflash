@@ -274,6 +274,7 @@ class prepareData:
             data = source.variables[name][:]
             # Copy the variables values.
             if name == "valid_time":
+                print(data)
                 data = data[time_indexes]
                 print(data)
                 print(reference_time.timestamp())
