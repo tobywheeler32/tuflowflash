@@ -421,12 +421,14 @@ class prepareData:
 
     def reproject_bom_list(self, x_list, y_list):
         transformer = Transformer.from_proj(Proj("epsg:4326"), Proj("epsg:7856"))
-        x2_list = []
-        y2_list = []
-        for i in range(len(y_list)):
-            x2, y2 = transformer.transform(y_list[i], x_list[0])
-            y2_list.append(y2)
-        for i in range(len(x_list)):
-            x2, y2 = transformer.transform(y_list[0], x_list[i])
-            x2_list.append(x2)
+        xmin, ymin = transformer.transform(y_list[0], x_list[0])
+        xmin = int(round(xmin,0))
+        ymin = int(round(ymin,0))
+        xmax,ymax = transformer.transform(y_list[-1],x_list[-1])
+        xmax = int(round(xmax,0))
+        ymax = int(round(ymax,0))
+        x_intervall = int(round((xmax-xmin)/len(x_list),0)) 
+        y_intervall = int(round((ymax-ymin)/len(y_list),0))
+        x2_list = range(xmin,xmin+x_intervall*len(x_list),x_intervall)
+        y2_list = range(ymin,ymin+y_intervall*len(y_list),y_intervall)
         return x2_list, y2_list
