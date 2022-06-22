@@ -277,6 +277,7 @@ class prepareData:
                 data = data[time_indexes]
                 data = (data - reference_time.timestamp())/3600/60
                 target.variables["time"][:] = data
+                print(target.variables["time"][:])
             elif name == "precipitation":
                 data = data[p50_index, time_indexes]
                 data = data * 0.05
