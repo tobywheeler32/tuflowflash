@@ -105,6 +105,8 @@ class FlashSettings:
                 )
             if line.lower().startswith("shp projection"):
                 setattr(self, "prj_file", Path(self.extract_variable_from_tcf(line)))
+            if line.lower().startswith("read restart file"):
+                setattr(self, "restart_file", Path(self.extract_variable_from_tcf(line)))
 
     def roundTime(self, dt=None, roundTo=60):
         """Round a datetime object to any time lapse in seconds
