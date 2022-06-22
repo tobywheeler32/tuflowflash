@@ -6,7 +6,7 @@ setup(
     author='Ivar Lokhorst',
     author_email='ivar.lokhorst@rhdhv.com',
     packages=['tuflowflash'],
-    install_requires=["gdal","argparse","requests","configparser","typing","cftime","netCDF4","pandas"]#,"pyproj==3.3"],
+    install_requires=["gdal","argparse","requests","configparser","typing","cftime","netCDF4","pandas"],#,"pyproj==3.3"],
     version='0.1',
     license='MIT',
     description='Code to operationally run a tuflow-flash system',
