@@ -276,7 +276,8 @@ class prepareData:
             if name == "valid_time":
                 data = data[time_indexes]
                 print(data)
-                data = (data - reference_time)/3600000000000
+                print(reference_time.timestamp())
+                data = (data - reference_time.timestamp())/3600
                 target.variables["time"][:] = data
             elif name == "precipitation":
                 data = data[p50_index, time_indexes]
