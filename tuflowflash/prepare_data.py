@@ -89,6 +89,7 @@ class prepareData:
         xds_lonlat = xds_lonlat.assign_coords(
             time=(xds_lonlat["time"]-reference_time)/3600000000000
         )
+        print(xds_lonlat["time"])
         xds_lonlat.to_netcdf(output_file)
 
     def read_rainfall_timeseries_uuids(self):
