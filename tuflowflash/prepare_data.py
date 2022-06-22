@@ -14,6 +14,8 @@ import os
 import pandas as pd
 import requests
 import rioxarray
+import xarray
+
 import geopandas
 from shapely.geometry import mapping
 import pytz
@@ -322,3 +324,17 @@ class prepareData:
         transformer = Transformer.from_proj(Proj("epsg:4326"), Proj("epsg:7856"))
         x2, y2 = transformer.transform(y, x)
         return x2, y2
+
+    def merge_bom_forecasts(self):
+        bom_forecast_da = rioxarray.open_rasterio(self.settings.bom_forecast_file)
+        bom_nowcast_da = rioxarray.open_rasterio(self.settings.bom_nowcast_file)
+        bom_nowcast_da=bom_nowcast_da.rio.write_crs(7856)
+        geodf = geopandas.read_file(self.settings.clipshape)
+        geodf.set_crs(7856)
+        bom_nowcast_da = bom_nowcast_da.rio.clip(geodf.geometry.apply(mapping), geodf.crs)
+        print(bom_nowcast_da)
+        bom_forecast_da = bom_forecast_da.reproject(("EPSG:7856",resolution=1000)
+        print(bom_forecast_da)
+        concatenated=xr.concat([bom_nowcast_da,bom_forecast_da],"time")
+        print(concatenated)
+        concatenated.to_netcdf("testjeeee.nc")
