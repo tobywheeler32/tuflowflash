@@ -333,7 +333,7 @@ class prepareData:
         geodf.set_crs(7856)
         bom_nowcast_da = bom_nowcast_da.rio.clip(geodf.geometry.apply(mapping), geodf.crs)
         print(bom_nowcast_da)
-        bom_forecast_da = bom_forecast_da.reproject(("EPSG:7856",resolution=1000)
+        bom_forecast_da = bom_forecast_da.reproject("EPSG:7856",resolution=1000)
         print(bom_forecast_da)
         concatenated=xr.concat([bom_nowcast_da,bom_forecast_da],"time")
         print(concatenated)
