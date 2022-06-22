@@ -85,12 +85,7 @@ class prepareData:
         xds_lonlat[:, :, :] = np.where(
             xds_lonlat == xds_lonlat.attrs["_FillValue"], 0, xds_lonlat
         )
-        print(start_time)
-        print(end_time)
         xds_lonlat = xds_lonlat.sel(time=slice(start_time, end_time))
-        print(xds_lonlat["time"])
-        print(xds_lonlat)
-        print(np.arange(tuflow_start_time, len(xds_lonlat["time"][:]) * 3, 3).tolist())
         xds_lonlat = xds_lonlat.assign_coords(
             time=(xds_lonlat["time"]-self.settings.reference_time)/3600000000000
         )
@@ -281,8 +276,7 @@ class prepareData:
             # Copy the variables values.
             if name == "valid_time":
                 data = data[time_indexes]
-                data = data - reference_time
-                data = data / 3600
+                data = data - reference_time/3600000000000
                 target.variables["time"][:] = data
             elif name == "precipitation":
                 data = data[p50_index, time_indexes]
