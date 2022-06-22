@@ -45,8 +45,7 @@ bom_settings = {
     "bom_url": str,
     "bom_forecast_file": str,
     "bom_nowcast_file": str,
-    "longitude_bbox": list,
-    "latitude_bbox": list,
+    "forecast_clipshape": Path,
 }
 
 
