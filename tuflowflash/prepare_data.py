@@ -13,9 +13,6 @@ import numpy as np
 import os
 import pandas as pd
 import requests
-import rioxarray
-import geopandas
-from shapely.geometry import mapping
 
 
 logger = logging.getLogger(__name__)
@@ -35,12 +32,10 @@ class prepareData:
         logger.info("Started gathering historical precipitation data")
         rainfall_gauges_uuids = self.read_rainfall_timeseries_uuids()
 
-        rain_df = self.get_lizard_timeseries(
-            rainfall_gauges_uuids,
-        )
+        rain_df = self.get_lizard_timeseries(rainfall_gauges_uuids,)
         logger.info("gathered lizard rainfall timeseries")
 
-        ## preprocess rain data
+        # preprocess rain data
         rain_df = self.process_rainfall_timeseries_for_tuflow(rain_df)
         rain_df.to_csv(self.settings.gauge_rainfall_file)
         logger.info("succesfully written rainfall file")
@@ -49,7 +44,7 @@ class prepareData:
         sourcePath = Path(r"temp/radar_rain.nc")
         self.download_bom_radar_data(self.settings.bom_nowcast_file)
 
-        self.write_netcdf_with_time_indexes(
+        self.write_nowcast_netcdf_with_time_indexes(
             sourcePath,
             self.settings.netcdf_nowcast_rainfall_file,
             self.settings.start_time,
@@ -61,33 +56,139 @@ class prepareData:
         sourcePath = Path(r"temp/forecast_rain.nc")
         self.download_bom_forecast_data(self.settings.bom_forecast_file)
 
-        self.write_netcdf_forecast(
+        self.write_forecast_netcdf_with_time_indexes(
             self,
             sourcePath,
             self.settings.netcdf_forecast_rainfall_file,
-            self.settings.forecast_clipshape,
+            self.settings.longitude_bbox,
+            self.settings.latitude_bbox,
             self.settings.start_time,
             self.settings.end_time,
         )
         logger.info("succesfully prepared netcdf radar rainfall")
 
-    def write_netcdf_forecast(
-        self, sourcePath, output_file, clipshape, start_time, end_time
+    def write_forecast_netcdf_with_time_indexes(
+        self,
+        source_file,
+        output_file,
+        longitude_bbox,
+        latitude_bbox,
+        start_time,
+        end_time,
     ):
-        geodf = geopandas.read_file(clipshape)
-        xds = rioxarray.open_rasterio(sourcePath)
-        xds = xds.rio.write_crs(4326)
-        source = xds.rio.clip(geodf.geometry.apply(mapping), geodf.crs)
-        xds_lonlat = source.rio.reproject("EPSG:7856")
-        xds_lonlat = xds_lonlat.rename("rainfall_depth")
-        xds_lonlat[:, :, :] = np.where(
-            xds_lonlat == xds_lonlat.attrs["_FillValue"], 0, xds_lonlat
+        source = nc.Dataset(source_file)
+        target = nc.Dataset(output_file, mode="w")
+
+        timestamps = self.timestamps_from_netcdf(source_file, "time")
+        # Figure out which timestamps are valid for the given simulation period.
+        time_indexes: List = (
+            np.argwhere(  # type: ignore
+                (timestamps >= start_time)  # type: ignore
+                & (timestamps <= end_time)  # type: ignore
+            )
+            .flatten()
+            .tolist()
         )
-        xds_lonlat = xds_lonlat.sel(time=slice(start_time, end_time))
-        xds_lonlat = xds_lonlat.assign_coords(
-            time=np.arange(0, len(xds_lonlat["time"][:]) * 3, 3).tolist()
+
+        xindices = np.where(
+            (source.variables["longitude"][:] > longitude_bbox[0])
+            & (source.variables["longitude"][:] < longitude_bbox[1])
+        )[0]
+        yindices = np.where(
+            (source.variables["latitude"][:] > latitude_bbox[0])
+            & (source.variables["latitude"][:] < latitude_bbox[1])
+        )[0]
+        for name, dim in source.dimensions.items():
+            dim_length = len(dim)
+            if name == "time":
+                dim_length = len(time_indexes)
+                target.createDimension(
+                    "time", dim_length if not dim.isunlimited() else None
+                )
+            if name == "longitude":
+                dim_length = len(xindices)
+                target.createDimension(
+                    "x", dim_length if not dim.isunlimited() else None
+                )
+            if name == "latitude":
+                dim_length = len(yindices)
+                target.createDimension(
+                    "y", dim_length if not dim.isunlimited() else None
+                )
+            if name == "Precip50Pct_SFC":
+                target.createDimension(
+                    "rainfall_depth", dim_length if not dim.isunlimited() else None
+                )
+
+        # Copy the global attributes.
+        target.setncatts({a: source.getncattr(a) for a in source.ncattrs()})
+        # Create the variables in the file.
+
+        for name, var in source.variables.items():
+
+            if name == "Precip50Pct_SFC":
+                target.createVariable("rainfall_depth", float, ("time", "y", "x"))
+                target.variables["rainfall_depth"].setncatts(
+                    {"grid_mapping": "spatial_ref"}
+                )
+            elif name == "time":
+                target.createVariable("time", float, "time")
+                target.variables["time"].setncatts(
+                    {
+                        "standard_name": "time",
+                        "long_name": "time",
+                        "units": "hours",
+                        "axis": "T",
+                    }
+                )
+            elif name == "latitude":
+                target.createVariable("x", var.dtype, "x")
+                target.variables["x"].setncatts(
+                    {
+                        "standard_name": "projection_x_coordinate",
+                        "long_name": "x-coordinate in cartesian system",
+                        "units": "m",
+                        "axis": "X",
+                    }
+                )
+            elif name == "longitude":
+                target.createVariable("y", var.dtype, "y")
+                target.variables["y"].setncatts(
+                    {
+                        "standard_name": "projection_y_coordinate",
+                        "long_name": "y-coordinate in cartesian system",
+                        "units": "m",
+                        "axis": "Y",
+                    }
+                )
+
+            data = source.variables[name][:]
+            # Copy the variables values.
+            if name == "time":
+                data = data[time_indexes]
+                data = data - data[0]
+                data = data / 3600
+                target.variables["time"][:] = data
+            elif name == "Precip50Pct_SFC":
+                data = data[time_indexes]
+                data = data[:, yindices]
+                data = data[:, :, xindices]
+                data = np.where(
+                    data[:, :, :].data
+                    == getattr(source.variables["Precip50Pct_SFC"], "_FillValue"),
+                    0,
+                    data[:, :, :].data,
+                )
+                target.variables["rainfall_depth"][:, :, :] = data[:, :, :]
+        target.variables["x"][:], target.variables["y"][:] = self.reproject_bom_list(
+            source.variables["longitude"][xindices],
+            source.variables["latitude"][yindices],
         )
-        xds_lonlat.to_netcdf(output_file)
+        crs = target.createVariable("spatial_ref", "i4")
+        crs.spatial_ref = 'PROJCS["GDA2020_MGA_Zone_56",GEOGCS["GCS_GDA2020",DATUM["GDA2020",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",500000.0],PARAMETER["False_Northing",10000000.0],PARAMETER["Central_Meridian",153.0],PARAMETER["Scale_Factor",0.9996],PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]]'
+        # Save the file.
+        target.close()
+        source.close()
 
     def read_rainfall_timeseries_uuids(self):
         rainfall_timeseries = pd.read_csv(self.settings.precipitation_uuid_file)
@@ -184,10 +285,10 @@ class prepareData:
         logging.info("succesfully downloaded %s", bomfile)
 
     def timestamps_from_netcdf(
-        self, source_file: Path
+        self, source_file: Path, timefield
     ) -> List[cftime.DatetimeGregorian]:
         source = nc.Dataset(source_file)
-        timestamps = nc.num2date(source["valid_time"][:], source["valid_time"].units)
+        timestamps = nc.num2date(source[timefield][:], source[timefield].units)
         source.close()
         return timestamps
 
@@ -292,7 +393,7 @@ class prepareData:
         target.close()
         source.close()
 
-    def write_netcdf_with_time_indexes(
+    def write_nowcast_netcdf_with_time_indexes(
         self, source_file: Path, dest_file: Path, start, end
     ):
         """Return netcdf file with only time indexes"""
@@ -300,7 +401,7 @@ class prepareData:
             raise MissingFileException("Source netcdf file %s not found", source_file)
 
         # logger.info("Converting %s to a file with only time indexes", source_file)
-        relevant_timestamps = self.timestamps_from_netcdf(source_file)
+        relevant_timestamps = self.timestamps_from_netcdf(source_file, "valid_time")
         # Figure out which timestamps are valid for the given simulation period.
         time_indexes: List = (
             np.argwhere(  # type: ignore
@@ -318,3 +419,15 @@ class prepareData:
         transformer = Transformer.from_proj(Proj("epsg:4326"), Proj("epsg:7856"))
         x2, y2 = transformer.transform(y, x)
         return x2, y2
+
+    def reproject_bom_list(self, x_list, y_list):
+        transformer = Transformer.from_proj(Proj("epsg:4326"), Proj("epsg:7856"))
+        x2_list = []
+        y2_list = []
+        for i in range(len(y_list)):
+            x2, y2 = transformer.transform(y_list[i], x_list[0])
+            y2_list.append(y2)
+        for i in range(len(x_list)):
+            x2, y2 = transformer.transform(y_list[0], x_list[i])
+            x2_list.append(x2)
+        return x2_list, y2_list
