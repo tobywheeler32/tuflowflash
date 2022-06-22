@@ -57,7 +57,6 @@ class prepareData:
         self.download_bom_forecast_data(self.settings.bom_forecast_file)
 
         self.write_forecast_netcdf_with_time_indexes(
-            self,
             sourcePath,
             self.settings.netcdf_forecast_rainfall_file,
             self.settings.longitude_bbox,
