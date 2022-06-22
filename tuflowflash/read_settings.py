@@ -34,6 +34,7 @@ switches_settings = {
     "get_historical_precipitation": bool,
     "get_bom_forecast": bool,
     "get_bom_nowcast": bool,
+    "combine_bom_data": bool,
     "run_simulation": bool,
     "post_to_lizard": bool,
     "archive_simulation": bool,
@@ -45,6 +46,7 @@ bom_settings = {
     "bom_url": str,
     "bom_forecast_file": str,
     "bom_nowcast_file": str,
+    "combined_bom_file": str,
     "forecast_clipshape": Path,
 }
 
