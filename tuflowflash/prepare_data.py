@@ -85,7 +85,11 @@ class prepareData:
         xds_lonlat[:, :, :] = np.where(
             xds_lonlat == xds_lonlat.attrs["_FillValue"], 0, xds_lonlat
         )
+        print(start_time)
+        print(end_time)
         xds_lonlat = xds_lonlat.sel(time=slice(start_time, end_time))
+        print(xds_lonlat["time"])
+        print(xds_lonlat)
         xds_lonlat = xds_lonlat.assign_coords(
             time=np.arange(tuflow_start_time, len(xds_lonlat["time"][:]) * 3, 3).tolist()
         )
