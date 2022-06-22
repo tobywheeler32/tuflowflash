@@ -54,6 +54,8 @@ class prepareData:
             self.settings.netcdf_nowcast_rainfall_file,
             self.settings.start_time,
             self.settings.end_time,
+            self.settings.reference_time,
+            self.settings.tuflow_start_time
         )
         logger.info("succesfully prepared netcdf radar rainfall")
 
@@ -67,11 +69,12 @@ class prepareData:
             self.settings.forecast_clipshape,
             self.settings.start_time,
             self.settings.end_time,
+            self.settings.tuflow_start_time,
         )
         logger.info("succesfully prepared netcdf radar rainfall")
 
     def write_forecast_netcdf_with_time_indexes(
-        self, sourcePath, output_file, clipshape, start_time, end_time
+        self, sourcePath, output_file, clipshape, start_time, end_time, tuflow_start_time
     ):
         geodf = geopandas.read_file(clipshape)
         xds = rioxarray.open_rasterio(sourcePath)
@@ -84,7 +87,7 @@ class prepareData:
         )
         xds_lonlat = xds_lonlat.sel(time=slice(start_time, end_time))
         xds_lonlat = xds_lonlat.assign_coords(
-            time=np.arange(0, len(xds_lonlat["time"][:]) * 3, 3).tolist()
+            time=np.arange(tuflow_start_time, len(xds_lonlat["time"][:]) * 3, 3).tolist()
         )
         xds_lonlat.to_netcdf(output_file)
 
@@ -202,7 +205,7 @@ class prepareData:
             p50_index = cum_rainfall_list.index(closest_to_p50)
         return p50_index
 
-    def write_new_netcdf(self, source_file: Path, dest_file: Path, time_indexes: List):
+    def write_new_netcdf(self, source_file: Path, dest_file: Path, time_indexes: List, reference_time):
         source = nc.Dataset(source_file)
         x_center, y_center = self.reproject_bom(
             source.variables["proj"].longitude_of_central_meridian,
@@ -273,7 +276,7 @@ class prepareData:
             # Copy the variables values.
             if name == "valid_time":
                 data = data[time_indexes]
-                data = data - data[0]
+                data = data - reference_time
                 data = data / 3600
                 target.variables["time"][:] = data
             elif name == "precipitation":
@@ -292,7 +295,7 @@ class prepareData:
         source.close()
 
     def write_nowcast_netcdf_with_time_indexes(
-        self, source_file: Path, dest_file: Path, start, end
+        self, source_file: Path, dest_file: Path, start, end, reference_time
     ):
         """Return netcdf file with only time indexes"""
         if not source_file.exists():
@@ -310,7 +313,7 @@ class prepareData:
             .tolist()
         )
 
-        self.write_new_netcdf(source_file, dest_file, time_indexes)
+        self.write_new_netcdf(source_file, dest_file, time_indexes,reference_time)
         logger.debug("Wrote new time-index-only netcdf to %s", dest_file)
 
     def reproject_bom(self, x, y):
