@@ -120,7 +120,7 @@ class FlashSettings:
         roundTo : Closest number of seconds to round to, default 1 minute.
         """
         if dt is None:
-            dt = datetime.datetime.utcnow()
+            dt = datetime.datetime.now()
         seconds = (dt.replace(tzinfo=None) - dt.min).seconds
         rounding = (seconds + roundTo / 2) // roundTo * roundTo
         return dt + datetime.timedelta(0, rounding - seconds, -dt.microsecond)
