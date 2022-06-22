@@ -16,7 +16,8 @@ import requests
 import rioxarray
 import geopandas
 from shapely.geometry import mapping
-
+import pytz
+import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -275,7 +276,9 @@ class prepareData:
             # Copy the variables values.
             if name == "valid_time":
                 data = data[time_indexes]
-                data = (data - reference_time.timestamp())/3600
+                aus_now = datetime.datetime.now(pytz.timezone('Australia/Sydney'))
+                tz_offset = aus_now.utcoffset().total_seconds()/60/60
+                data = (data - reference_time.timestamp())/3600 - tz_offset
                 target.variables["time"][:] = data
                 print(target.variables["time"][:])
             elif name == "precipitation":
