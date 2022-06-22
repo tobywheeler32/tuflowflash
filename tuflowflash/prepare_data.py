@@ -326,8 +326,8 @@ class prepareData:
         return x2, y2
 
     def merge_bom_forecasts(self):
-        bom_forecast_da = rioxarray.open_rasterio(self.settings.bom_forecast_file)
-        bom_nowcast_da = rioxarray.open_rasterio(self.settings.bom_nowcast_file)
+        bom_forecast_da = rioxarray.open_rasterio(self.settings.netcdf_forecast_rainfall_file)
+        bom_nowcast_da = rioxarray.open_rasterio(self.settings.netcdf_nowcast_rainfall_file)
         bom_nowcast_da=bom_nowcast_da.rio.write_crs(7856)
         geodf = geopandas.read_file(self.settings.clipshape)
         geodf.set_crs(7856)
