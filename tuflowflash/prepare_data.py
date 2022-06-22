@@ -90,12 +90,12 @@ class prepareData:
         )
 
         xindices = np.where(
-            (source.variables["longitude"][:] > longitude_bbox[0])
-            & (source.variables["longitude"][:] < longitude_bbox[1])
+            (source.variables["longitude"][:] > float(longitude_bbox[0]))
+            & (source.variables["longitude"][:] < float(longitude_bbox[1]))
         )[0]
         yindices = np.where(
-            (source.variables["latitude"][:] > latitude_bbox[0])
-            & (source.variables["latitude"][:] < latitude_bbox[1])
+            (source.variables["latitude"][:] > float(latitude_bbox[0]))
+            & (source.variables["latitude"][:] < float(latitude_bbox[1]))
         )[0]
         for name, dim in source.dimensions.items():
             dim_length = len(dim)
