@@ -80,6 +80,11 @@ def main():
         else:
             logger.info("not gathering bom nowcast rainfall data, skipping..")
 
+        if settings.combine_bom_data:
+            data_prepper.merge_bom_forecasts()
+        else:
+            logger.info("not combining bom products, skipping..")
+
         # run simulation
         if settings.run_simulation:
             tuflow_simulation = run_tuflow.TuflowSimulation(settings)
