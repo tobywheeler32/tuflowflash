@@ -275,6 +275,7 @@ class prepareData:
             # Copy the variables values.
             if name == "valid_time":
                 data = data[time_indexes]
+                print(data)
                 data = (data - reference_time)/3600000000000
                 target.variables["time"][:] = data
             elif name == "precipitation":
