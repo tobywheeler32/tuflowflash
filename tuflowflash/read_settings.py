@@ -2,7 +2,6 @@ import configparser as ConfigParser
 import datetime
 import logging
 from pathlib import Path
-from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +113,9 @@ class FlashSettings:
             if line.lower().startswith("shp projection"):
                 setattr(self, "prj_file", Path(self.extract_variable_from_tcf(line)))
             if line.lower().startswith("read restart file"):
-                setattr(self, "restart_file", Path(self.extract_variable_from_tcf(line)))
+                setattr(
+                    self, "restart_file", Path(self.extract_variable_from_tcf(line))
+                )
 
     def roundTime(self, dt=None, roundTo=60):
         """Round a datetime object to any time lapse in seconds
@@ -154,9 +155,7 @@ class FlashSettings:
                         setattr(self, variable, str(value))
                     if datatype == bool:
                         setattr(
-                            self,
-                            variable,
-                            value.lower() == "true",
+                            self, variable, value.lower() == "true",
                         )
                     if datatype == list:
                         input_list = string_to_list(value)

@@ -38,9 +38,7 @@ class prepareData:
         logger.info("Started gathering historical precipitation data")
         rainfall_gauges_uuids = self.read_rainfall_timeseries_uuids()
 
-        rain_df = self.get_lizard_timeseries(
-            rainfall_gauges_uuids,
-        )
+        rain_df = self.get_lizard_timeseries(rainfall_gauges_uuids,)
         logger.info("gathered lizard rainfall timeseries")
 
         ## preprocess rain data
@@ -82,14 +80,14 @@ class prepareData:
         xds = rioxarray.open_rasterio(sourcePath)
         xds = xds.rio.write_crs(4326)
         source = xds.rio.clip(geodf.geometry.apply(mapping), geodf.crs)
-        xds_lonlat = source.rio.reproject("EPSG:7856",resolution=5500)
+        xds_lonlat = source.rio.reproject("EPSG:7856", resolution=5500)
         xds_lonlat = xds_lonlat.rename("rainfall_depth")
         xds_lonlat[:, :, :] = np.where(
             xds_lonlat == xds_lonlat.attrs["_FillValue"], 0, xds_lonlat
         )
         xds_lonlat = xds_lonlat.sel(time=slice(start_time, end_time))
         xds_lonlat = xds_lonlat.assign_coords(
-            time=(xds_lonlat["time"]-reference_time)/3600000000000
+            time=(xds_lonlat["time"] - reference_time) / 3600000000000
         )
         xds_lonlat.to_netcdf(output_file)
 
@@ -207,7 +205,9 @@ class prepareData:
             p50_index = cum_rainfall_list.index(closest_to_p50)
         return p50_index
 
-    def write_new_netcdf(self, source_file: Path, dest_file: Path, time_indexes: List, reference_time):
+    def write_new_netcdf(
+        self, source_file: Path, dest_file: Path, time_indexes: List, reference_time
+    ):
         source = nc.Dataset(source_file)
         x_center, y_center = self.reproject_bom(
             source.variables["proj"].longitude_of_central_meridian,
@@ -278,9 +278,9 @@ class prepareData:
             # Copy the variables values.
             if name == "valid_time":
                 data = data[time_indexes]
-                aus_now = datetime.datetime.now(pytz.timezone('Australia/Sydney'))
-                tz_offset = aus_now.utcoffset().total_seconds()/60/60
-                data = (data - reference_time.timestamp())/3600 - tz_offset
+                aus_now = datetime.datetime.now(pytz.timezone("Australia/Sydney"))
+                tz_offset = aus_now.utcoffset().total_seconds() / 60 / 60
+                data = (data - reference_time.timestamp()) / 3600 - tz_offset
                 target.variables["time"][:] = data
             elif name == "precipitation":
                 data = data[p50_index, time_indexes]
@@ -315,7 +315,7 @@ class prepareData:
             .flatten()
             .tolist()
         )
-        self.write_new_netcdf(source_file, dest_file, time_indexes,reference_time)
+        self.write_new_netcdf(source_file, dest_file, time_indexes, reference_time)
         logger.debug("Wrote new time-index-only netcdf to %s", dest_file)
 
     def reproject_bom(self, x, y):
@@ -324,19 +324,34 @@ class prepareData:
         return x2, y2
 
     def merge_bom_forecasts(self):
-        bom_forecast_da = rioxarray.open_rasterio(self.settings.netcdf_forecast_rainfall_file)
-        bom_nowcast_da = rioxarray.open_rasterio(self.settings.netcdf_nowcast_rainfall_file)
-        bom_nowcast_da=bom_nowcast_da.rio.write_crs(7856)
+        bom_forecast_da = rioxarray.open_rasterio(
+            self.settings.netcdf_forecast_rainfall_file
+        )
+        bom_nowcast_da = rioxarray.open_rasterio(
+            self.settings.netcdf_nowcast_rainfall_file
+        )
+        bom_nowcast_da = bom_nowcast_da.rio.write_crs(7856)
         geodf = geopandas.read_file(self.settings.forecast_clipshape)
         geodf.to_crs(7856)
-        bom_nowcast_da = bom_nowcast_da.rio.clip(geodf.geometry.apply(mapping), geodf.crs)
-        bom_nowcast_da[:,:,:]=np.where(bom_nowcast_da == bom_nowcast_da.attrs["_FillValue"], 0, bom_nowcast_da)
-        bom_nowcast_da=bom_nowcast_da.assign_coords(time=bom_nowcast_da["time"].astype("float")/3600000000000.0) #because it is read as nano seconds
-        bom_forecast_da = bom_forecast_da.rio.reproject("EPSG:7856",resolution=1000)
-        bom_forecast_da[:,:,:]=np.where(bom_forecast_da == bom_forecast_da.attrs["_FillValue"], 0, bom_forecast_da)
-        bom_forecast_da=bom_forecast_da.assign_coords(time=bom_forecast_da["time"].astype("float32"))
-        bom_forecast_da = bom_forecast_da.sel(time=slice(max(bom_nowcast_da["time"])+3, 1000000))
-        concatenated=xr.concat([bom_nowcast_da,bom_forecast_da],"time")
-        concatenated=concatenated.fillna(0)
-        print(concatenated)
+        bom_nowcast_da = bom_nowcast_da.rio.clip(
+            geodf.geometry.apply(mapping), geodf.crs
+        )
+        bom_nowcast_da[:, :, :] = np.where(
+            bom_nowcast_da == bom_nowcast_da.attrs["_FillValue"], 0, bom_nowcast_da
+        )
+        bom_nowcast_da = bom_nowcast_da.assign_coords(
+            time=bom_nowcast_da["time"].astype("float") / 3600000000000.0
+        )  # because it is read as nano seconds
+        bom_forecast_da = bom_forecast_da.rio.reproject("EPSG:7856", resolution=1000)
+        bom_forecast_da[:, :, :] = np.where(
+            bom_forecast_da == bom_forecast_da.attrs["_FillValue"], 0, bom_forecast_da
+        )
+        bom_forecast_da = bom_forecast_da.assign_coords(
+            time=bom_forecast_da["time"].astype("float32")
+        )
+        bom_forecast_da = bom_forecast_da.sel(
+            time=slice(max(bom_nowcast_da["time"]) + 3, 1000000)
+        )
+        concatenated = xr.concat([bom_nowcast_da, bom_forecast_da], "time")
+        concatenated = concatenated.fillna(0)
         concatenated.to_netcdf(self.settings.netcdf_combined_rainfall_file)

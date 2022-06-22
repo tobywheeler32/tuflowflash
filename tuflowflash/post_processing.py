@@ -141,24 +141,6 @@ class ProcessFlash:
             target_ds = None
         return
 
-    def post_raster_to_lizard(self):
-        filenames = glob.glob(
-            os.path.join(self.settings.output_folder, "grids", "*_d_Max*.tif")
-        )
-        username = "__key__"
-        password = self.settings.apikey
-        headers = {
-            "username": username,
-            "password": password,
-        }
-        raster_url = RASTER_SOURCES_URL + self.settings.depth_raster_uuid + "/"
-        url = raster_url + "data/"
-
-        for file in filenames:
-            logger.debug("posting file %s to lizard", file)
-            file = {"file": open(file, "rb")}
-            requests.post(url=url, files=file, headers=headers)
-        return
 
     def create_post_element(self, series):
         data = []

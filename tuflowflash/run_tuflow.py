@@ -52,9 +52,7 @@ class TuflowSimulation:
         states = list(filter(os.path.isfile, glob.glob(search_dir + "/warm_*.trf")))
         states.sort(key=lambda x: os.path.getmtime(x))
         if states:
-            shutil.copyfile(
-                states[-1], self.settings.restart_file
-            )
+            shutil.copyfile(states[-1], self.settings.restart_file)
         else:
             shutil.copyfile(
                 self.settings.initial_states_folder / "cold_state.trf",

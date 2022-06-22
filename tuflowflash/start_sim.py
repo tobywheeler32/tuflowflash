@@ -1,12 +1,10 @@
 import argparse
-import datetime
 import logging
 
 from tuflowflash import post_processing
 from tuflowflash import prepare_data
 from tuflowflash import read_settings
 from tuflowflash import run_tuflow
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
