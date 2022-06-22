@@ -131,16 +131,7 @@ class FlashSettings:
             reference_time = datetime.datetime.strptime(
                 reference_time, "%Y-%m-%dT%H:%M"
             )
-        if relative_time.startswith("-"):
-            time = reference_time - datetime.timedelta(
-                hours=float(relative_time.strip("-"))
-            )
-        elif relative_time.startswith("+"):
-            time = reference_time + datetime.timedelta(
-                hours=float(relative_time.strip("-"))
-            )
-        else:
-            time = reference_time + datetime.timedelta(hours=float(relative_time))
+        time = reference_time + datetime.timedelta(hours=float(relative_time))
         return reference_time, time
 
     def read_settings_file(self, variables, variable_header):
