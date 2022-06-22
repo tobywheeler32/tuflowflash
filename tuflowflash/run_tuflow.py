@@ -53,12 +53,12 @@ class TuflowSimulation:
         states.sort(key=lambda x: os.path.getmtime(x))
         if states:
             shutil.copyfile(
-                states[-1], str(self.settings.tcf_file).replace(".tcf", ".trf")
+                states[-1], self.settings.restart_file
             )
         else:
             shutil.copyfile(
                 self.settings.initial_states_folder / "cold_state.trf",
-                str(self.settings.tcf_file).replace(".tcf", ".trf"),
+                self.settings.restart_file,
             )
 
     def save_state(self):
