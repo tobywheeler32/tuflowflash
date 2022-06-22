@@ -74,11 +74,11 @@ class FlashSettings:
 
         self.read_tcf_parameters(self.tcf_file)
 
-        self.start_time = self.convert_relative_time(
-            self.config.get("general", "relative_start_time"), reference_time
+        self.reference_time, self.start_time = self.convert_relative_time(
+            self.tuflow_start_time, reference_time
         )
-        self.end_time = self.convert_relative_time(
-            self.config.get("general", "relative_end_time"), reference_time
+        self.reference_time, self.end_time = self.convert_relative_time(
+            self.tuflow_end_time, reference_time
         )
 
         logger.info("settings have been read")
@@ -96,6 +96,12 @@ class FlashSettings:
                 setattr(
                     self,
                     "tuflow_start_time",
+                    float(self.extract_variable_from_tcf(line)),
+                )
+            if line.lower().startswith("end time"):
+                setattr(
+                    self,
+                    "tuflow_end_time",
                     float(self.extract_variable_from_tcf(line)),
                 )
             if line.lower().startswith("output folder"):
@@ -135,7 +141,7 @@ class FlashSettings:
             )
         else:
             time = reference_time + datetime.timedelta(hours=float(relative_time))
-        return time
+        return reference_time, time
 
     def read_settings_file(self, variables, variable_header):
         # maak de output van deze functie aan
