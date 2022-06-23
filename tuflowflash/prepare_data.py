@@ -342,7 +342,7 @@ class prepareData:
         bom_nowcast_da = bom_nowcast_da.assign_coords(
             time=bom_nowcast_da["time"].astype("float") / 3600000000000.0
         )  # because it is read as nano seconds
-        bom_forecast_da = bom_forecast_da.rio.reproject("EPSG:7856", resolution=1000)
+        bom_forecast_da = bom_forecast_da.rio.reproject_match(bom_nowcast_da)
         bom_forecast_da[:, :, :] = np.where(
             bom_forecast_da == bom_forecast_da.attrs["_FillValue"], 0, bom_forecast_da
         )
