@@ -75,11 +75,11 @@ class prepareData:
 
     def convert_csv_file_to_bc_file(self):
         csv_df = pd.read_csv(self.settings.boundary_csv_input_file, delimiter=",")
-        csv_df["datetime"] = pd.to_datetime(csv_df["datetime"])
-        csv_df.rename(columns={"datetime": "Time (h)"}, inplace=True)
+        csv_df["Time (h)"] = pd.to_datetime(csv_df["datetime"])
         csv_df.set_index("Time (h)", inplace=True)
         csv_df.index = (csv_df.index - self.settings.reference_time) / np.timedelta64(1, "h")
         csv_df.to_csv(self.settings.boundary_csv_tuflow_file)
+        logger.info("succesfully converted csv to boundary file")
 
     def write_forecast_netcdf_with_time_indexes(
         self, sourcePath, output_file, clipshape, start_time, end_time, reference_time
