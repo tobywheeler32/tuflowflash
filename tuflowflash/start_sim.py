@@ -83,6 +83,11 @@ def main():
         else:
             logger.info("not combining bom products, skipping..")
 
+        if settings.convert_csv_to_bc:
+            data_prepper.convert_csv_file_to_bc_file()
+        else:
+            logger.info("not converting csv to boundary conditions, skipping..")
+
         # run simulation
         if settings.run_simulation:
             tuflow_simulation = run_tuflow.TuflowSimulation(settings)

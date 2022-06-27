@@ -13,6 +13,8 @@ Tuflow_settings = {
     "export_states_folder": Path,
     "states_expiry_time_days": int,
     "gauge_rainfall_file": Path,
+    "boundary_csv_input_file": Path,
+    "boundary_csv_tuflow_file": Path,
     "netcdf_forecast_rainfall_file": Path,
     "netcdf_nowcast_rainfall_file": Path,
     "netcdf_combined_rainfall_file": Path,
@@ -32,6 +34,7 @@ lizard_settings = {
 
 switches_settings = {
     "get_historical_precipitation": bool,
+    "convert_csv_to_bc": bool,
     "get_bom_forecast": bool,
     "get_bom_nowcast": bool,
     "combine_bom_data": bool,
