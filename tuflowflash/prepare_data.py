@@ -78,7 +78,7 @@ class prepareData:
         csv_df["datetime"] = pd.to_datetime(csv_df["datetime"])
         csv_df.rename(columns={"datetime": "Time (h)"}, inplace=True)
         csv_df.set_index("Time (h)", inplace=True)
-        csv_df.index = (csv_df.index - ref_time) / np.timedelta64(1, "h")
+        csv_df.index = (csv_df.index - self.settings.reference_time) / np.timedelta64(1, "h")
         csv_df.to_csv(self.settings.boundary_csv_tuflow_file)
 
     def write_forecast_netcdf_with_time_indexes(
