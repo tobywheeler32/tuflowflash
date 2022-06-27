@@ -73,7 +73,7 @@ class prepareData:
         )
         logger.info("succesfully prepared netcdf radar rainfall")
 
-    def convert_csv_file_to_bc_file():
+    def convert_csv_file_to_bc_file(self):
         csv_df = pd.read_csv(self.settings.boundary_csv_input_file, delimiter=",")
         csv_df["datetime"] = pd.to_datetime(csv_df["datetime"])
         csv_df.rename(columns={"datetime": "Time (h)"}, inplace=True)
