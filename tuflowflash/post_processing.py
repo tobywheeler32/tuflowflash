@@ -114,13 +114,8 @@ class ProcessFlash:
         logging.info("succesfully archived files to: %s", result_folder)
 
     def clear_in_output(self):
-        files = glob.glob("Log")
-        for f in files:
-            os.remove(f)
-
-        files = glob.glob(self.settings.output_folder)
-        for f in files:
-            os.remove(f)
+        shutil.rmtree("Log")
+        shutil.rmtree(self.settings.output_folder)
 
         if hasattr(self.settings, "netcdf_forecast_rainfall_file"):
             os.remove(self.settings.netcdf_forecast_rainfall_file)
