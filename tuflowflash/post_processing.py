@@ -114,7 +114,7 @@ class ProcessFlash:
         logging.info("succesfully archived files to: %s", result_folder)
 
     def clear_in_output(self):
-        files = glob.glob("log")
+        files = glob.glob("Log")
         for f in files:
             os.remove(f)
 
