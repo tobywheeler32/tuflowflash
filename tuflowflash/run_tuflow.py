@@ -54,7 +54,7 @@ class TuflowSimulation:
         valid_states = []
         if states:
             for state in states:
-                if os.stat(state).st_mtime < datetime.now() - timedelta(self.settings.states_expiry_time_days):
+                if os.stat(state).st_mtime < (datetime.now() - timedelta(self.settings.states_expiry_time_days)).timestamp():
                     os.remove(state)
                 else:
                     valid_states.append(state)
