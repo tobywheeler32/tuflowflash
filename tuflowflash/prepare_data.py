@@ -77,7 +77,7 @@ class prepareData:
 
     def convert_csv_file_to_bc_file(self):
         csv_df = pd.read_csv(self.settings.boundary_csv_input_file, delimiter=",")
-        csv_df["Time (h)"] = pd.to_datetime(csv_df["datetime"], format='%d-%m-%y %H:%M')
+        csv_df["Time (h)"] = pd.to_datetime(csv_df["datetime"], dayfirst=True)
         csv_df.set_index("Time (h)", inplace=True)
         csv_df.index = (csv_df.index - self.settings.reference_time) / np.timedelta64(
             1, "h"
