@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from pathlib import Path
 import glob
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class TuflowSimulation:
         valid_states = []
         if states:
             for state in states:
-                if os.stat(state).st_mtime < datetime.now() - self.settings.states_expiry_time_days *86400:
+                if os.stat(state).st_mtime < datetime.now() - timedelta(self.settings.states_expiry_time_days):
                     os.remove(state)
                 else:
                     valid_states.append(state)
