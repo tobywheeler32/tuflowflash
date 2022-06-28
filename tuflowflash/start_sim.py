@@ -107,6 +107,12 @@ def main():
             post_processer.archive_simulation()
         else:
             logger.info("Not archiving files, skipping..")
+
+        if settings.clear_input_output:
+            logger.info("clearing in/output from simulation")
+            post_processer.clear_in_output()
+        else:
+            logger.info("not clearing in/output, skipping..")
         return 0
 
     except OWN_EXCEPTIONS as e:

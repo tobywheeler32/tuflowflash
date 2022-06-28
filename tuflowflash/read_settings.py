@@ -41,6 +41,7 @@ switches_settings = {
     "run_simulation": bool,
     "post_to_lizard": bool,
     "archive_simulation": bool,
+    "clear_input_output": bool,
 }
 
 bom_settings = {
@@ -158,7 +159,9 @@ class FlashSettings:
                         setattr(self, variable, str(value))
                     if datatype == bool:
                         setattr(
-                            self, variable, value.lower() == "true",
+                            self,
+                            variable,
+                            value.lower() == "true",
                         )
                     if datatype == list:
                         input_list = string_to_list(value)

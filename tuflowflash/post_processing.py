@@ -84,7 +84,12 @@ class ProcessFlash:
         shutil.copytree(
             self.settings.output_folder, os.path.join(result_folder, "results")
         )
-        if hasattr(self.settings, "netcdf_forecast_rainfall_file"):
+        if hasattr(self.settings, "netcdf_combined_rainfall_file"):
+            shutil.copyfile(
+                self.settings.netcdf_combined_rainfall_file,
+                os.path.join(result_folder, "netcdf_rain.nc"),
+            )
+        elif hasattr(self.settings, "netcdf_forecast_rainfall_file"):
             shutil.copyfile(
                 self.settings.netcdf_forecast_rainfall_file,
                 os.path.join(result_folder, "netcdf_rain.nc"),
@@ -94,14 +99,39 @@ class ProcessFlash:
                 self.settings.netcdf_nowcast_rainfall_file,
                 os.path.join(result_folder, "netcdf_rain.nc"),
             )
-        if hasattr(self.settings, "gauge_rainfall_file"):
+        elif hasattr(self.settings, "gauge_rainfall_file"):
             shutil.copyfile(
                 self.settings.gauge_rainfall_file,
                 os.path.join(result_folder, "gauge_rain.csv"),
             )
+        if hasattr(self.settings, "boundary_csv_tuflow_file"):
+            shutil.copyfile(
+                self.settings.boundary_csv_tuflow_file,
+                os.path.join(result_folder, "boundary_csv_tuflow_file.csv"),
+            )
         shutil.make_archive(result_folder, "zip", result_folder)
         shutil.rmtree(result_folder)
         logging.info("succesfully archived files to: %s", result_folder)
+
+    def clear_in_output(self):
+        files = glob.glob("log")
+        for f in files:
+            os.remove(f)
+
+        files = glob.glob(self.settings.output_folder)
+        for f in files:
+            os.remove(f)
+
+        if hasattr(self.settings, "netcdf_forecast_rainfall_file"):
+            os.remove(self.settings.netcdf_forecast_rainfall_file)
+        if hasattr(self.settings, "netcdf_nowcast_rainfall_file"):
+            os.remove(self.settings.netcdf_nowcast_rainfall_file)
+        if hasattr(self.settings, "netcdf_combined_rainfall_file"):
+            os.remove(self.settings.netcdf_combined_rainfall_file)
+        if hasattr(self.settings, "gauge_rainfall_file"):
+            os.remove(self.settings.gauge_rainfall_file)
+        if hasattr(self.settings, "boundary_csv_tuflow_file"):
+            os.remove(self.settings.boundary_csv_tuflow_file)
 
     def create_projection(self):
         """obtain wkt definition of the tuflow spatial projection. Used to write
@@ -140,7 +170,6 @@ class ProcessFlash:
             target_ds.FlushCache()
             target_ds = None
         return
-
 
     def create_post_element(self, series):
         data = []

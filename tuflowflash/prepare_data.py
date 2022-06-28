@@ -38,7 +38,9 @@ class prepareData:
         logger.info("Started gathering historical precipitation data")
         rainfall_gauges_uuids = self.read_rainfall_timeseries_uuids()
 
-        rain_df = self.get_lizard_timeseries(rainfall_gauges_uuids,)
+        rain_df = self.get_lizard_timeseries(
+            rainfall_gauges_uuids,
+        )
         logger.info("gathered lizard rainfall timeseries")
 
         ## preprocess rain data
@@ -77,7 +79,9 @@ class prepareData:
         csv_df = pd.read_csv(self.settings.boundary_csv_input_file, delimiter=",")
         csv_df["Time (h)"] = pd.to_datetime(csv_df["datetime"])
         csv_df.set_index("Time (h)", inplace=True)
-        csv_df.index = (csv_df.index - self.settings.reference_time) / np.timedelta64(1, "h")
+        csv_df.index = (csv_df.index - self.settings.reference_time) / np.timedelta64(
+            1, "h"
+        )
         csv_df.to_csv(self.settings.boundary_csv_tuflow_file)
         logger.info("succesfully converted csv to boundary file")
 
