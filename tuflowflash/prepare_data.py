@@ -123,7 +123,7 @@ class prepareData:
             "end": self.settings.end_time.isoformat(),
             "page_size": 100000,
         }
-
+        print(params)
         for index, row in rainfall_timeseries.iterrows():
             r = requests.get(
                 TIMESERIES_URL.format(row["gauge_uuid"]),
@@ -336,34 +336,38 @@ class prepareData:
         return x2, y2
 
     def merge_bom_forecasts(self):
-        bom_forecast_da = rioxarray.open_rasterio(
+        with rioxarray.open_rasterio(
             self.settings.netcdf_forecast_rainfall_file
-        )
-        bom_nowcast_da = rioxarray.open_rasterio(
-            self.settings.netcdf_nowcast_rainfall_file
-        )
-        bom_nowcast_da = bom_nowcast_da.rio.write_crs(7856)
-        geodf = geopandas.read_file(self.settings.forecast_clipshape)
-        geodf.to_crs(7856)
-        bom_nowcast_da = bom_nowcast_da.rio.clip(
-            geodf.geometry.apply(mapping), geodf.crs
-        )
-        bom_nowcast_da[:, :, :] = np.where(
-            bom_nowcast_da == bom_nowcast_da.attrs["_FillValue"], 0, bom_nowcast_da
-        )
-        bom_nowcast_da = bom_nowcast_da.assign_coords(
-            time=bom_nowcast_da["time"].astype("float") / 3600000000000.0
-        )  # because it is read as nano seconds
-        bom_forecast_da = bom_forecast_da.rio.reproject_match(bom_nowcast_da)
-        bom_forecast_da[:, :, :] = np.where(
-            bom_forecast_da == bom_forecast_da.attrs["_FillValue"], 0, bom_forecast_da
-        )
-        bom_forecast_da = bom_forecast_da.assign_coords(
-            time=bom_forecast_da["time"].astype("float32")
-        )
-        bom_forecast_da = bom_forecast_da.sel(
-            time=slice(max(bom_nowcast_da["time"]) + 3, 1000000)
-        )
-        concatenated = xr.concat([bom_nowcast_da, bom_forecast_da], "time")
-        concatenated = concatenated.fillna(0)
-        concatenated.to_netcdf(self.settings.netcdf_combined_rainfall_file)
+        ) as bom_forecast_da:
+            with rioxarray.open_rasterio(
+                self.settings.netcdf_nowcast_rainfall_file
+            ) as bom_nowcast_da:
+                bom_nowcast_da = bom_nowcast_da.rio.write_crs(7856)
+                geodf = geopandas.read_file(self.settings.forecast_clipshape)
+                geodf.to_crs(7856)
+                bom_nowcast_da = bom_nowcast_da.rio.clip(
+                    geodf.geometry.apply(mapping), geodf.crs
+                )
+                bom_nowcast_da[:, :, :] = np.where(
+                    bom_nowcast_da == bom_nowcast_da.attrs["_FillValue"],
+                    0,
+                    bom_nowcast_da,
+                )
+                bom_nowcast_da = bom_nowcast_da.assign_coords(
+                    time=bom_nowcast_da["time"].astype("float") / 3600000000000.0
+                )  # because it is read as nano seconds
+                bom_forecast_da = bom_forecast_da.rio.reproject_match(bom_nowcast_da)
+                bom_forecast_da[:, :, :] = np.where(
+                    bom_forecast_da == bom_forecast_da.attrs["_FillValue"],
+                    0,
+                    bom_forecast_da,
+                )
+                bom_forecast_da = bom_forecast_da.assign_coords(
+                    time=bom_forecast_da["time"].astype("float32")
+                )
+                bom_forecast_da = bom_forecast_da.sel(
+                    time=slice(max(bom_nowcast_da["time"]) + 3, 1000000)
+                )
+                concatenated = xr.concat([bom_nowcast_da, bom_forecast_da], "time")
+                concatenated = concatenated.fillna(0)
+                concatenated.to_netcdf(self.settings.netcdf_combined_rainfall_file)
