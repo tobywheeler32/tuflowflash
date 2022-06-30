@@ -265,7 +265,7 @@ class ProcessFlash:
         }
         raster_url = RASTER_SOURCES_URL + raster_uuid + "/"
         url = raster_url + "data/"
-        
+
         aus_now = datetime.datetime.now(pytz.timezone("Australia/Sydney"))
         timezone_stamp = (
             "+" + str(int(aus_now.utcoffset().total_seconds() / 3600)).zfill(2) + ":00"
@@ -273,7 +273,7 @@ class ProcessFlash:
         for file, timestamp in zip(filenames, timestamps):
             logger.debug("posting file %s to lizard", file)
             lizard_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:00")
-            lizard_timestamp = lizard_timestamp+timezone_stamp
+            lizard_timestamp = lizard_timestamp + timezone_stamp
             requests.delete(url=url, headers=json_headers)
             file = {"file": open(file, "rb")}
             data = {"timestamp": lizard_timestamp}

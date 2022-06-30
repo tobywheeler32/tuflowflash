@@ -18,6 +18,8 @@ Tuflow_settings = {
     "netcdf_forecast_rainfall_file": Path,
     "netcdf_nowcast_rainfall_file": Path,
     "netcdf_combined_rainfall_file": Path,
+    "rain_grids_folder": Path,
+    "rain_grids_csv": Path,
     "archive_folder": Path,
 }
 

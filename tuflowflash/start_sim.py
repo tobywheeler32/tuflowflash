@@ -80,6 +80,7 @@ def main():
 
         if settings.combine_bom_data:
             data_prepper.merge_bom_forecasts()
+            data_prepper.netcdf_to_ascii()  # PLEASE NOTE: NOW ALWAYS CONVERTING NC TO ASCII PROVIDE CSV FILE IN TCF
         else:
             logger.info("not combining bom products, skipping..")
 

@@ -371,3 +371,46 @@ class prepareData:
                 concatenated = xr.concat([bom_nowcast_da, bom_forecast_da], "time")
                 concatenated = concatenated.fillna(0)
                 concatenated.to_netcdf(self.settings.netcdf_combined_rainfall_file)
+
+    def netcdf_to_ascii(self):
+        nc_data_obj = nc.Dataset(self.settings.netcdf_combined_rainfall_file)
+        Lon = nc_data_obj.variables["x"][:]
+        Lat = nc_data_obj.variables["y"][:]
+        precip_arr = np.asarray(
+            nc_data_obj.variables["rainfall_depth"]
+        )  # read data into an array
+        # the upper-left and lower-right coordinates of the image
+        LonMin, LatMax, LonMax, LatMin = [Lon.min(), Lat.max(), Lon.max(), Lat.min()]
+
+        # resolution calculation
+        N_Lat = len(Lat)
+        N_Lon = len(Lon)
+        Lon_Res = (LonMax - LonMin) / (float(N_Lon) - 1)
+        Lat_Res = (LatMax - LatMin) / (float(N_Lat) - 1)
+
+        for i in range(len(precip_arr[:])):
+            header = "ncols     %s\n" % precip_arr[i].shape[1]
+            header += "nrows    %s\n" % precip_arr[i].shape[0]
+            header += "xllcorner {}\n".format(LonMin)
+            header += "yllcorner {}\n".format(LatMin)
+            header += "cellsize {}\n".format(Lat_Res)
+            header += "NODATA_value -9999\n"
+
+            np.savetxt(
+                self.settings.rain_grids_folder / str(nc_data_obj.variables["time"][i])
+                + ".asc",
+                precip_arr[i],
+                header=header,
+                fmt="%1.2f",
+                comments="",
+            )
+
+        time_stamps = nc_data_obj.variables["time"][:]
+        file_names = []
+        for time in time_stamps:
+            file_names.append("RFG\\" + str(time) + ".asc")
+        df = pd.DataFrame()
+        df["Time (hrs)"] = time_stamps
+        df["Rainfall Grid"] = file_names
+        df.set_index("Time (hrs)", inplace=True)
+        df.to_csv(self.settings.rain_grids_csv)
