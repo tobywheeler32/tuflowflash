@@ -397,8 +397,10 @@ class prepareData:
             header += "NODATA_value -9999\n"
 
             np.savetxt(
-                self.settings.rain_grids_folder / str(nc_data_obj.variables["time"][i])
-                + ".asc",
+                os.path.join(
+                    self.settings.rain_grids_folder,
+                    str(nc_data_obj.variables["time"][i]) + ".asc",
+                ),
                 precip_arr[i],
                 header=header,
                 fmt="%1.2f",
