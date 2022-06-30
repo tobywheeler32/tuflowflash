@@ -15,6 +15,7 @@ import pandas as pd
 import requests
 import rioxarray
 import xarray as xr
+import glob
 
 import geopandas
 from shapely.geometry import mapping
@@ -373,6 +374,8 @@ class prepareData:
                 concatenated.to_netcdf(self.settings.netcdf_combined_rainfall_file)
 
     def netcdf_to_ascii(self):
+        for f in glob.glob(self.settings.rain_grids_folder+"*.asc"):
+            os.remove(f)
         nc_data_obj = nc.Dataset(self.settings.netcdf_combined_rainfall_file)
         Lon = nc_data_obj.variables["x"][:]
         Lat = nc_data_obj.variables["y"][:]
