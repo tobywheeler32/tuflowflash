@@ -374,7 +374,7 @@ class prepareData:
                 concatenated.to_netcdf(self.settings.netcdf_combined_rainfall_file)
 
     def netcdf_to_ascii(self):
-        for f in glob.glob(str(self.settings.rain_grids_folder)+"*.asc"):
+        for f in glob.glob(str(self.settings.rain_grids_folder)+"/*.asc"):
             os.remove(f)
         nc_data_obj = nc.Dataset(self.settings.netcdf_combined_rainfall_file)
         Lon = nc_data_obj.variables["x"][:]
