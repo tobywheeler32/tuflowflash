@@ -85,7 +85,16 @@ class ProcessFlash:
         shutil.copytree(
             self.settings.output_folder, os.path.join(result_folder, "results")
         )
-        if hasattr(self.settings, "netcdf_combined_rainfall_file"):
+        if hasattr(self.settings, "rain_grids_csv"):
+            shutil.copyfile(
+                self.settings.rain_grids_csv,
+                os.path.join(result_folder, "rain_grids.csv"),
+            )
+            shutil.copyfile(
+                self.settings.netcdf_combined_rainfall_file,
+                os.path.join(result_folder, "netcdf_rain.nc"),
+            )
+        elif hasattr(self.settings, "netcdf_combined_rainfall_file"):
             shutil.copyfile(
                 self.settings.netcdf_combined_rainfall_file,
                 os.path.join(result_folder, "netcdf_rain.nc"),
@@ -118,6 +127,8 @@ class ProcessFlash:
         shutil.rmtree("Log")
         shutil.rmtree(self.settings.output_folder)
 
+        if hasattr(self.settings, "rain_grids_csv"):
+            os.remove(self.settings.rain_grids_csv)
         if hasattr(self.settings, "netcdf_forecast_rainfall_file"):
             os.remove(self.settings.netcdf_forecast_rainfall_file)
         if hasattr(self.settings, "netcdf_nowcast_rainfall_file"):
