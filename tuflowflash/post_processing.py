@@ -168,7 +168,7 @@ class ProcessFlash:
 
             output = file.replace(".flt", ".tif")
             target_ds = gdal.GetDriverByName("GTiff").Create(
-                output, x_res, y_res, 1, gdal.GDT_Float32
+                output, x_res, y_res, 1, gdal.GDT_Float32, options = [ 'COMPRESS=Deflate' ]
             )
             target_ds.SetGeoTransform(geo_transform)
             target_ds.GetRasterBand(1).WriteArray(data_array)
