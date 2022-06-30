@@ -419,3 +419,4 @@ class prepareData:
         df["Rainfall Grid"] = file_names
         df.set_index("Time (hrs)", inplace=True)
         df.to_csv(self.settings.rain_grids_csv)
+        nc_data_obj.close()
