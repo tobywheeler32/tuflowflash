@@ -119,6 +119,10 @@ class ProcessFlash:
                 self.settings.boundary_csv_tuflow_file,
                 os.path.join(result_folder, "boundary_csv_tuflow_file.csv"),
             )
+        if self.settings.get_bom_forecast:
+            shutil.copyfile(os.path.join("temp","forecast_rain.nc"),os.path.join(result_folder,"forecast_rain.nc"))
+        if self.settings.get_bom_nowcast:
+            shutil.copyfile(os.path.join("temp","radar_rain.nc"),os.path.join(result_folder,"radar_rain.nc"))
         shutil.make_archive(result_folder, "zip", result_folder)
         shutil.rmtree(result_folder)
         logging.info("succesfully archived files to: %s", result_folder)
