@@ -303,9 +303,7 @@ class prepareData:
             # Copy the variables values.
             if name == "valid_time":
                 data = data[time_indexes]
-                aus_now = datetime.datetime.now(pytz.timezone("Australia/Sydney"))
-                tz_offset = aus_now.utcoffset().total_seconds() / 60 / 60
-                data = (data - reference_time.timestamp()) / 3600 - tz_offset
+                data = (data - reference_time.timestamp()) / 3600
                 target.variables["time"][:] = data
             elif name == "precipitation":
                 data = data[p50_index, time_indexes]
@@ -340,7 +338,6 @@ class prepareData:
             .flatten()
             .tolist()
         )
-        print(time_indexes)
         self.write_new_netcdf(source_file, dest_file, time_indexes, reference_time)
         logger.debug("Wrote new time-index-only netcdf to %s", dest_file)
 
