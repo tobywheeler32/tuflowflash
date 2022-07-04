@@ -36,6 +36,13 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--log_file",
+        dest="log_file",
+        default=None,
+        help="log file folder",
+    )
+
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -54,7 +61,11 @@ def main():
         log_level = logging.DEBUG
     else:
         log_level = logging.INFO
-    logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
+
+    if options.log_file is not None:
+        logging.basicConfig(filename=options.log_file,level=log_level,format="%(levelname)s: %(message)s")
+    else:
+        logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
 
     settings = read_settings.FlashSettings(
         options.settings_file, options.reference_time
