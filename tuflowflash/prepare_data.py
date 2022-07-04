@@ -119,9 +119,15 @@ class prepareData:
         timeseries_df_list = []
         gauge_names_list = []
 
+        local = pytz.timezone("Australia/Sydney")
+        local_start = local.localize(self.settings.start_time, is_dst=None)
+        utc_start = local_start.astimezone(pytz.utc)
+        local_end = local.localize(self.settings.end_time, is_dst=None)
+        utc_end = local_end.astimezone(pytz.utc)
+
         params = {
-            "start": self.settings.start_time.isoformat(),
-            "end": self.settings.end_time.isoformat(),
+            "start": utc_start.isoformat(),
+            "end": utc_end.isoformat(),
             "page_size": 100000,
         }
         print(params)
