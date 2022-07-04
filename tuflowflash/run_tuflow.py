@@ -64,6 +64,7 @@ class TuflowSimulation:
                     os.remove(state)
                 else:
                     valid_states.append(state)
+            logger.info("Using state: %s",valid_states[-1])
             shutil.copyfile(valid_states[-1], self.settings.restart_file)
         else:
             shutil.copyfile(
