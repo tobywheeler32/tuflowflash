@@ -53,11 +53,17 @@ class prepareData:
         sourcePath = Path(r"temp/radar_rain.nc")
         self.download_bom_radar_data(self.settings.bom_nowcast_file)
 
+        local = pytz.timezone("Australia/Sydney")
+        local_start = local.localize(self.settings.start_time, is_dst=None)
+        utc_start = local_start.astimezone(pytz.utc)
+        local_end = local.localize(self.settings.end_time, is_dst=None)
+        utc_end = local_end.astimezone(pytz.utc)
+        
         self.write_nowcast_netcdf_with_time_indexes(
             sourcePath,
             self.settings.netcdf_nowcast_rainfall_file,
-            self.settings.start_time,
-            self.settings.end_time,
+            utc_start,
+            utc_end,
             self.settings.reference_time,
         )
         logger.info("succesfully prepared netcdf radar rainfall")
