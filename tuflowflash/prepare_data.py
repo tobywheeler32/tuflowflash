@@ -208,6 +208,7 @@ class prepareData:
         self, source_file: Path
     ) -> List[cftime.DatetimeGregorian]:
         source = nc.Dataset(source_file)
+        print(source["valid_time"][:])
         timestamps = nc.num2date(source["valid_time"][:], source["valid_time"].units)
         source.close()
         return timestamps
