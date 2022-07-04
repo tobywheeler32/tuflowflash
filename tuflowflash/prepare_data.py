@@ -208,7 +208,6 @@ class prepareData:
         self, source_file: Path
     ) -> List[cftime.DatetimeGregorian]:
         source = nc.Dataset(source_file)
-        print(source["valid_time"][:])
         timestamps = nc.num2date(source["valid_time"][:], source["valid_time"].units)
         source.close()
         return timestamps
@@ -335,6 +334,7 @@ class prepareData:
             .flatten()
             .tolist()
         )
+        print(time_indexes)
         self.write_new_netcdf(source_file, dest_file, time_indexes, reference_time)
         logger.debug("Wrote new time-index-only netcdf to %s", dest_file)
 
