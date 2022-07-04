@@ -377,7 +377,7 @@ class prepareData:
                     time=bom_forecast_da["time"].astype("float32")
                 )
                 bom_forecast_da = bom_forecast_da.sel(
-                    time=slice(max(bom_nowcast_da["time"]) + 3, 1000000)
+                    time=slice(max(bom_nowcast_da["time"]) + 1.5, 1000000)
                 )
                 concatenated = xr.concat([bom_nowcast_da, bom_forecast_da], "time")
                 concatenated = concatenated.fillna(0)
