@@ -47,7 +47,10 @@ class prepareData:
         logger.info("gathered lizard rainfall timeseries")
 
         ## preprocess rain data
-        rain_df = self.process_rainfall_timeseries_for_tuflow(rain_df)
+        local = pytz.timezone("Australia/Sydney")
+        local_reference_time = local.localize(self.settings.reference_time, is_dst=None)
+        utc_reference_time = local_reference_time.astimezone(pytz.utc)
+        rain_df = self.process_rainfall_timeseries_for_tuflow(rain_df,utc_reference_time)
         rain_df.to_csv(self.settings.gauge_rainfall_file)
         logger.info("succesfully written rainfall file")
 
@@ -156,13 +159,12 @@ class prepareData:
         result = pd.concat(timeseries_df_list, axis=1)
         return result
 
-    def process_rainfall_timeseries_for_tuflow(self, rain_df):
+    def process_rainfall_timeseries_for_tuflow(self, rain_df,utc_reference_time):
         rain_df["time"] = 0.0
         for x in range(len(rain_df)):
-            if x > 0:
-                rain_df["time"][x] = (
-                    rain_df.index[x] - rain_df.index[0]
-                ).seconds / 3600
+            rain_df["time"][x] = (
+                rain_df.index[x] - utc_reference_time
+            ).seconds / 3600
         rain_df.set_index("time", inplace=True)
         for col in rain_df.columns:
             rain_df[col].values[0] = 0
