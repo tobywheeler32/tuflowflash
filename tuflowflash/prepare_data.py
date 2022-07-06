@@ -194,6 +194,7 @@ class prepareData:
                     ftp_server.retrbinary(f"RETR {bomfile}", file.write)
                 ftp_server.close()
             except ftplib.error_temp:
+                logger.warning("Temporary ftp issue, retrying in: %s",FTP_RETRY_SLEEP)
                 time.sleep(FTP_RETRY_SLEEP)
             else:
                 break
@@ -219,6 +220,7 @@ class prepareData:
                         shutil.copyfileobj(f_in, f_out)
                 logging.info("succesfully downloaded %s", bomfile)
             except ftplib.error_temp:
+                logger.warning("Temporary ftp issue, retrying in: %s",FTP_RETRY_SLEEP)
                 time.sleep(FTP_RETRY_SLEEP)
             else:
                 break
