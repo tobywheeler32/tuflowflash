@@ -50,8 +50,9 @@ class prepareData:
         local = pytz.timezone("Australia/Sydney")
         local_reference_time = local.localize(self.settings.reference_time, is_dst=None)
         utc_reference_time = local_reference_time.astimezone(pytz.utc)
+        
         rain_df = self.process_rainfall_timeseries_for_tuflow(rain_df,utc_reference_time)
-        print(rain_df)
+        rain_df = rain_df.fillna(-99999)
         rain_df.to_csv(self.settings.gauge_rainfall_file)
         logger.info("succesfully written rainfall file")
 
