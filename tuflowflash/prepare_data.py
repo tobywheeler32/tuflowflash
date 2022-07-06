@@ -137,8 +137,8 @@ class prepareData:
         utc_end = local_end.astimezone(pytz.utc)
 
         params = {
-            "start": utc_start.isoformat(),
-            "end": utc_end.isoformat(),
+            "time__gte": utc_start.isoformat(),
+            "time__lte": utc_end.isoformat(),
             "page_size": 100000,
         }
         for index, row in rainfall_timeseries.iterrows():
