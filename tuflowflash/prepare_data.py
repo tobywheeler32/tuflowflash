@@ -163,12 +163,10 @@ class prepareData:
         rain_df["time"] = 0.0
         rain_df['datetime'] = rain_df.index
         for x in range(len(rain_df)):
-            rain_df["time"][x] = (
+            timedifference = (
                 rain_df.index[x] - utc_reference_time
-            ).seconds / 3600
-            print(rain_df.index[x])
-            print(utc_reference_time)
-            print(rain_df["time"][x])
+            )
+            rain_df["time"][x] = (timedifference.days*86400+timedifference.seconds) / 3600
         rain_df.set_index("time", inplace=True)
         for col in rain_df.columns:
             rain_df[col].values[0] = 0
