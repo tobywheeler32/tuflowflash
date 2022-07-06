@@ -99,6 +99,9 @@ def main():
 
         # uploading to Lizard
         post_processer = post_processing.ProcessFlash(settings)
+        if settings.track_historic_forecasts:
+            post_processer.track_historic_forecasts_in_lizard()
+
         if settings.post_to_lizard:
             post_processer.process_tuflow()
             # post_processer.upload_bom_precipitation()

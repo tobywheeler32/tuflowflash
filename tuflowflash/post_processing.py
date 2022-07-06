@@ -43,16 +43,16 @@ class ProcessFlash:
             file
         ) in (
             filenames
-        ):  # please note: will cause problems with water level rasters as well
+        ):  # please note: might cause problems with water level rasters as well
             file_stem = Path(file).stem
             file_timestamp = float(file_stem[-3:])
             timestamp = self.settings.start_time + datetime.timedelta(
                 hours=float(file_timestamp)
             )
-            timestamps.append(timestamp)
-        self.post_temporal_raster_to_lizard(
-            filenames, self.settings.depth_raster_uuid, timestamps
-        )
+            timestamps.append(timestamp) #note: water depth should be switched back on after crisis
+        #self.post_temporal_raster_to_lizard(
+        #    filenames, self.settings.depth_raster_uuid, timestamps
+        #)
         logger.info("Tuflow results posted to Lizard")
         if hasattr(self.settings, "waterlevel_result_uuid_file"):
             self.post_timeseries()
@@ -120,9 +120,15 @@ class ProcessFlash:
                 os.path.join(result_folder, "boundary_csv_tuflow_file.csv"),
             )
         if self.settings.get_bom_forecast:
-            shutil.copyfile(os.path.join("temp","forecast_rain.nc"),os.path.join(result_folder,"forecast_rain.nc"))
+            shutil.copyfile(
+                os.path.join("temp", "forecast_rain.nc"),
+                os.path.join(result_folder, "forecast_rain.nc"),
+            )
         if self.settings.get_bom_nowcast:
-            shutil.copyfile(os.path.join("temp","radar_rain.nc"),os.path.join(result_folder,"radar_rain.nc"))
+            shutil.copyfile(
+                os.path.join("temp", "radar_rain.nc"),
+                os.path.join(result_folder, "radar_rain.nc"),
+            )
         shutil.make_archive(result_folder, "zip", result_folder)
         shutil.rmtree(result_folder)
         logging.info("succesfully archived files to: %s", result_folder)
@@ -172,7 +178,7 @@ class ProcessFlash:
 
             output = file.replace(".flt", ".tif")
             target_ds = gdal.GetDriverByName("GTiff").Create(
-                output, x_res, y_res, 1, gdal.GDT_Float32, options = [ 'COMPRESS=Deflate' ]
+                output, x_res, y_res, 1, gdal.GDT_Float32, options=["COMPRESS=Deflate"]
             )
             target_ds.SetGeoTransform(geo_transform)
             target_ds.GetRasterBand(1).WriteArray(data_array)
@@ -294,3 +300,34 @@ class ProcessFlash:
             data = {"timestamp": lizard_timestamp}
             requests.post(url=url, data=data, files=file, headers=headers)
         return
+
+    def track_historic_forecasts_in_lizard(self):
+        headers = {
+            "username": "__key__",
+            "password": self.settings.apikey,
+            "Content-Type": "application/json",
+        }
+
+        historic_admin = pd.read_csv(self.settings.historic_forecast_administration_csv)
+        for index, row in historic_admin.iterrows():
+            for x in range(len(row) - 1, 0, -1):
+                url_to_update = TIMESERIES_URL + row[x] + "/events/"
+                source_data_url = TIMESERIES_URL + row[x - 1] + "/events/"
+                r = requests.get(url=source_data_url, headers=headers)
+                source_df = pd.DataFrame(r.json()["results"])
+                try:
+                    source_df["time"] = pd.to_datetime(source_df["time"])
+                    source_df.set_index("time", inplace=True)
+                    timeserie_data = []
+                    for index, value in source_df["value"].iteritems():
+                        timeserie_data.append(
+                            {"time": index.isoformat(), "value": str(value)}
+                        )
+                    r = requests.post(
+                        url=url_to_update,
+                        data=json.dumps(timeserie_data),
+                        headers=headers,
+                    )
+                except:
+                    logger.warning("Did not fill historic timeserie: %s", row[x])
+                    pass

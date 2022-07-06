@@ -32,6 +32,7 @@ lizard_settings = {
     "waterlevel_result_uuid_file": Path,
     "waterdepth_raster_upload_list": list,
     "waterlevel_raster_upload_list": list,
+    "historic_forecast_administration_csv": Path,
 }
 
 switches_settings = {
@@ -44,6 +45,7 @@ switches_settings = {
     "post_to_lizard": bool,
     "archive_simulation": bool,
     "clear_input_output": bool,
+    "track_historic_forecasts": bool,
 }
 
 bom_settings = {
