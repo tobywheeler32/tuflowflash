@@ -16,6 +16,7 @@ import requests
 import rioxarray
 import xarray as xr
 import glob
+import time
 
 import geopandas
 from shapely.geometry import mapping
@@ -25,7 +26,8 @@ import datetime
 logger = logging.getLogger(__name__)
 
 TIMESERIES_URL = "https://rhdhv.lizard.net/api/v4/timeseries/{}/events/"
-
+FTP_RETRY_COUNT = 10
+FTP_RETRY_SLEEP = 5
 
 class MissingFileException(Exception):
     pass
@@ -136,7 +138,6 @@ class prepareData:
             "end": utc_end.isoformat(),
             "page_size": 100000,
         }
-        print(params)
         for index, row in rainfall_timeseries.iterrows():
             r = requests.get(
                 TIMESERIES_URL.format(row["gauge_uuid"]),
@@ -168,47 +169,59 @@ class prepareData:
         return rain_df
 
     def download_bom_radar_data(self, nowcast_file):
-        ftp_server = ftplib.FTP(
-            self.settings.bom_url,
-            self.settings.bom_username,
-            self.settings.bom_password,
-        )
-        ftp_server.encoding = "utf-8"
-        ftp_server.cwd("radar/")
-
-        radar_files = []
-        files = ftp_server.nlst()
-
-        for file in files:
-            if file.startswith(nowcast_file):
-                radar_files.append(file)
-
-        bomfile = radar_files[-1]
-        if not os.path.exists("temp"):
-            os.mkdir("temp")
-
-        with open("temp/radar_rain.nc", "wb") as file:
-            ftp_server.retrbinary(f"RETR {bomfile}", file.write)
-        ftp_server.close()
+        for x in range(FTP_RETRY_COUNT):
+            try:
+                ftp_server = ftplib.FTP(
+                 self.settings.bom_url,
+                 self.settings.bom_username,
+                 self.settings.bom_password,
+                )
+                ftp_server.encoding = "utf-8"
+                ftp_server.cwd("radar/")
+            
+                radar_files = []
+                files = ftp_server.nlst()
+            
+                for file in files:
+                    if file.startswith(nowcast_file):
+                        radar_files.append(file)
+            
+                bomfile = radar_files[-1]
+                if not os.path.exists("temp"):
+                    os.mkdir("temp")
+            
+                with open("temp/radar_rain.nc", "wb") as file:
+                    ftp_server.retrbinary(f"RETR {bomfile}", file.write)
+                ftp_server.close()
+            except ftplib.error_temp:
+                time.sleep(FTP_RETRY_SLEEP)
+            else:
+                break
         return
 
     def download_bom_forecast_data(self, bomfile):
-        ftp_server = ftplib.FTP(
-            self.settings.bom_url,
-            self.settings.bom_username,
-            self.settings.bom_password,
-        )
-        ftp_server.encoding = "utf-8"
-        ftp_server.cwd("adfd/")
-        tmp_rainfile = Path("temp/" + bomfile)
+        for x in range(FTP_RETRY_COUNT):
+            try:
+                ftp_server = ftplib.FTP(
+                    self.settings.bom_url,
+                    self.settings.bom_username,
+                    self.settings.bom_password,
+                )
+                ftp_server.encoding = "utf-8"
+                ftp_server.cwd("adfd/")
+                tmp_rainfile = Path("temp/" + bomfile)
 
-        with open(tmp_rainfile, "wb") as f:
-            ftp_server.retrbinary(f"RETR {bomfile}", f.write)
+                with open(tmp_rainfile, "wb") as f:
+                    ftp_server.retrbinary(f"RETR {bomfile}", f.write)
 
-        with gzip.open(tmp_rainfile, "rb") as f_in:
-            with open("temp/forecast_rain.nc", "wb") as f_out:
-                shutil.copyfileobj(f_in, f_out)
-        logging.info("succesfully downloaded %s", bomfile)
+                with gzip.open(tmp_rainfile, "rb") as f_in:
+                    with open("temp/forecast_rain.nc", "wb") as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                logging.info("succesfully downloaded %s", bomfile)
+            except ftplib.error_temp:
+                time.sleep(FTP_RETRY_SLEEP)
+            else:
+                break
 
     def timestamps_from_netcdf(
         self, source_file: Path
