@@ -314,6 +314,7 @@ class ProcessFlash:
             for x in range(len(row) - 1, 0, -1):
                 url_to_update = TIMESERIES_URL + row[x] + "/events/"
                 source_data_url = TIMESERIES_URL + row[x - 1] + "/events/"
+                requests.delete(url=url_to_update,headers=headers)
                 r = requests.get(url=source_data_url, params=params, headers=headers)
                 source_df = pd.DataFrame(r.json()["results"])
                 try:
