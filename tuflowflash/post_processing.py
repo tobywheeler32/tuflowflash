@@ -307,13 +307,14 @@ class ProcessFlash:
             "password": self.settings.apikey,
             "Content-Type": "application/json",
         }
+        params = {"page_size": 100000}
 
         historic_admin = pd.read_csv(self.settings.historic_forecast_administration_csv)
         for index, row in historic_admin.iterrows():
             for x in range(len(row) - 1, 0, -1):
                 url_to_update = TIMESERIES_URL + row[x] + "/events/"
                 source_data_url = TIMESERIES_URL + row[x - 1] + "/events/"
-                r = requests.get(url=source_data_url, headers=headers)
+                r = requests.get(url=source_data_url, params=params, headers=headers)
                 source_df = pd.DataFrame(r.json()["results"])
                 try:
                     source_df["time"] = pd.to_datetime(source_df["time"])
