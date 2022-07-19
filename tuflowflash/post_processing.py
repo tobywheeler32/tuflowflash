@@ -50,9 +50,9 @@ class ProcessFlash:
                 hours=float(file_timestamp)
             )
             timestamps.append(timestamp) #note: water depth should be switched back on after crisis
-        #self.post_temporal_raster_to_lizard(
-        #    filenames, self.settings.depth_raster_uuid, timestamps
-        #)
+        self.post_temporal_raster_to_lizard(
+            filenames, self.settings.depth_raster_uuid, timestamps
+        )
         logger.info("Tuflow results posted to Lizard")
         if hasattr(self.settings, "waterlevel_result_uuid_file"):
             self.post_timeseries()
