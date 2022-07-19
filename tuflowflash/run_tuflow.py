@@ -20,7 +20,7 @@ class TuflowSimulation:
             self.settings.tuflow_executable,
             "-b",
             "-x",
-            "-pu1",
+            "-pu0",
             str(self.settings.tcf_file),
         ]
 
