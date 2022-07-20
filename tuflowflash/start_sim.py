@@ -55,7 +55,7 @@ def main():
     else:
         log_level = logging.INFO
 
-    logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
+    logging.basicConfig(level=log_level, format="%(asctime)s %(levelname)s: %(message)s")
 
     settings = read_settings.FlashSettings(
         options.settings_file, options.reference_time
