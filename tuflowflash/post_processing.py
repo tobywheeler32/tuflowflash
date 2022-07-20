@@ -344,8 +344,8 @@ class ProcessFlash:
             for x in range(len(row) - 1, 0, -1):
                 url_to_update = TIMESERIES_URL + row[x] + "/events/"
                 source_data_url = TIMESERIES_URL + row[x - 1] + "/events/"
-                S.delete(url=url_to_update, headers=headers)
-                r = S.get(url=source_data_url, params=params, headers=headers)
+                requests.delete(url=url_to_update, headers=headers)
+                r = requests.get(url=source_data_url, params=params, headers=headers)
                 source_df = pd.DataFrame(r.json()["results"])
                 try:
                     source_df["time"] = pd.to_datetime(source_df["time"])
@@ -355,7 +355,7 @@ class ProcessFlash:
                         timeserie_data.append(
                             {"time": index.isoformat(), "value": str(value)}
                         )
-                    r = S.post(
+                    r = requests.post(
                         url=url_to_update,
                         data=json.dumps(timeserie_data),
                         headers=headers,
