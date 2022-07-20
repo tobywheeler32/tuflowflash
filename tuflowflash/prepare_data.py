@@ -159,7 +159,7 @@ class prepareData:
                     timeseries_df_list.append(ts_df)
                     gauge_names_list.append(row["gauge_name"])
                 else:
-                    data = {"time":utc_start,row["gauge_name"]:-99}
+                    data = {"time":[utc_start],row["gauge_name"]:[-99]}
                     ts_df = pd.DataFrame(data)
                     ts_df.set_index("time",inplace=True)
                     ts_df.index = pd.to_datetime(ts_df.index)
