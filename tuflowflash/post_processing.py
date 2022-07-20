@@ -298,7 +298,10 @@ class ProcessFlash:
             requests.delete(url=url, headers=json_headers)
             file = {"file": open(file, "rb")}
             data = {"timestamp": lizard_timestamp}
-            requests.post(url=url, data=data, files=file, headers=headers)
+            r=requests.post(url=url, data=data, files=file, headers=headers)
+            while requests.get(url=r.json()["url"]).json()["status"] != "SUCCESS":
+                print("raster upload status: {}".format(requests.get(url=r.json()["url"]).json()["status"]))
+                sleep(3)
         return
 
     def track_historic_forecasts_in_lizard(self):
