@@ -1,7 +1,9 @@
+from pathlib import Path
+
 import configparser as ConfigParser
 import datetime
 import logging
-from pathlib import Path
+
 
 logger = logging.getLogger(__name__)
 

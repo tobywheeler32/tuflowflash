@@ -1,10 +1,13 @@
+from datetime import datetime
+from datetime import timedelta
+from pathlib import Path
+
+import glob
 import logging
 import os
 import shutil
 import subprocess
-from pathlib import Path
-import glob
-from datetime import datetime, timedelta
+
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +67,7 @@ class TuflowSimulation:
                     os.remove(state)
                 else:
                     valid_states.append(state)
-            logger.info("Using state: %s",valid_states[-1])
+            logger.info("Using state: %s", valid_states[-1])
             shutil.copyfile(valid_states[-1], self.settings.restart_file)
         else:
             shutil.copyfile(

@@ -1,10 +1,11 @@
-import argparse
-import logging
-
 from tuflowflash import post_processing
 from tuflowflash import prepare_data
 from tuflowflash import read_settings
 from tuflowflash import run_tuflow
+
+import argparse
+import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,9 @@ def main():
     else:
         log_level = logging.INFO
 
-    logging.basicConfig(level=log_level, format="%(asctime)s %(levelname)s: %(message)s")
+    logging.basicConfig(
+        level=log_level, format="%(asctime)s %(levelname)s: %(message)s"
+    )
 
     settings = read_settings.FlashSettings(
         options.settings_file, options.reference_time

@@ -1,28 +1,28 @@
 from pathlib import Path
 from pyproj import Proj
 from pyproj import Transformer
+from requests.adapters import HTTPAdapter
+from requests.adapters import Retry
+from shapely.geometry import mapping
 from typing import List
-from requests.adapters import HTTPAdapter, Retry
 
 import cftime
 import ftplib
-import logging
+import geopandas
+import glob
 import gzip
-import shutil
+import logging
 import netCDF4 as nc
 import numpy as np
 import os
 import pandas as pd
+import pytz
 import requests
 import rioxarray
-import xarray as xr
-import glob
+import shutil
 import time
+import xarray as xr
 
-import geopandas
-from shapely.geometry import mapping
-import pytz
-import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +31,9 @@ FTP_RETRY_COUNT = 10
 FTP_RETRY_SLEEP = 5
 
 S = requests.Session()
-retries = Retry(total=5,
-                backoff_factor=0.1,
-                status_forcelist=[ 500, 502, 503, 504 ])
-S.mount('http://', HTTPAdapter(max_retries=retries))
+retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
+S.mount("http://", HTTPAdapter(max_retries=retries))
+
 
 class MissingFileException(Exception):
     pass
@@ -57,8 +56,10 @@ class prepareData:
         local = pytz.timezone("Australia/Sydney")
         local_reference_time = local.localize(self.settings.reference_time, is_dst=None)
         utc_reference_time = local_reference_time.astimezone(pytz.utc)
-        
-        rain_df = self.process_rainfall_timeseries_for_tuflow(rain_df,utc_reference_time)
+
+        rain_df = self.process_rainfall_timeseries_for_tuflow(
+            rain_df, utc_reference_time
+        )
         rain_df = rain_df.fillna(-99)
         rain_df.to_csv(self.settings.gauge_rainfall_file)
         logger.info("succesfully written rainfall file")
@@ -72,7 +73,7 @@ class prepareData:
         utc_start = local_start.astimezone(pytz.utc)
         local_end = local.localize(self.settings.end_time, is_dst=None)
         utc_end = local_end.astimezone(pytz.utc)
-        
+
         self.write_nowcast_netcdf_with_time_indexes(
             sourcePath,
             self.settings.netcdf_nowcast_rainfall_file,
@@ -158,7 +159,7 @@ class prepareData:
             )
             if r.ok:
                 ts_df = pd.DataFrame(r.json()["results"])
-                if 'time' in ts_df.columns:
+                if "time" in ts_df.columns:
                     ts_df = ts_df[["time", "value"]]
                     ts_df = ts_df.rename(columns={"value": row["gauge_name"]})
                     ts_df.set_index("time", inplace=True)
@@ -166,9 +167,9 @@ class prepareData:
                     timeseries_df_list.append(ts_df)
                     gauge_names_list.append(row["gauge_name"])
                 else:
-                    data = {"time":[utc_start],row["gauge_name"]:[-99]}
+                    data = {"time": [utc_start], row["gauge_name"]: [-99]}
                     ts_df = pd.DataFrame(data)
-                    ts_df.set_index("time",inplace=True)
+                    ts_df.set_index("time", inplace=True)
                     ts_df.index = pd.to_datetime(ts_df.index)
                     timeseries_df_list.append(ts_df)
                     gauge_names_list.append(row["gauge_name"])
@@ -176,14 +177,14 @@ class prepareData:
         result = pd.concat(timeseries_df_list, axis=1)
         return result
 
-    def process_rainfall_timeseries_for_tuflow(self, rain_df,utc_reference_time):
+    def process_rainfall_timeseries_for_tuflow(self, rain_df, utc_reference_time):
         rain_df["time"] = 0.0
-        rain_df['datetime'] = rain_df.index
+        rain_df["datetime"] = rain_df.index
         for x in range(len(rain_df)):
-            timedifference = (
-                rain_df.index[x] - utc_reference_time
-            )
-            rain_df["time"][x] = (timedifference.days*86400+timedifference.seconds) / 3600
+            timedifference = rain_df.index[x] - utc_reference_time
+            rain_df["time"][x] = (
+                timedifference.days * 86400 + timedifference.seconds
+            ) / 3600
         rain_df.set_index("time", inplace=True)
         for col in rain_df.columns:
             rain_df[col].values[0] = 0
@@ -193,29 +194,29 @@ class prepareData:
         for x in range(FTP_RETRY_COUNT):
             try:
                 ftp_server = ftplib.FTP(
-                 self.settings.bom_url,
-                 self.settings.bom_username,
-                 self.settings.bom_password,
+                    self.settings.bom_url,
+                    self.settings.bom_username,
+                    self.settings.bom_password,
                 )
                 ftp_server.encoding = "utf-8"
                 ftp_server.cwd("radar/")
-            
+
                 radar_files = []
                 files = ftp_server.nlst()
-            
+
                 for file in files:
                     if file.startswith(nowcast_file):
                         radar_files.append(file)
-            
+
                 bomfile = radar_files[-1]
                 if not os.path.exists("temp"):
                     os.mkdir("temp")
-            
+
                 with open("temp/radar_rain.nc", "wb") as file:
                     ftp_server.retrbinary(f"RETR {bomfile}", file.write)
                 ftp_server.close()
             except ftplib.error_temp:
-                logger.warning("Temporary ftp issue, retrying in: %s",FTP_RETRY_SLEEP)
+                logger.warning("Temporary ftp issue, retrying in: %s", FTP_RETRY_SLEEP)
                 time.sleep(FTP_RETRY_SLEEP)
             else:
                 break
@@ -241,7 +242,7 @@ class prepareData:
                         shutil.copyfileobj(f_in, f_out)
                 logging.info("succesfully downloaded %s", bomfile)
             except ftplib.error_temp:
-                logger.warning("Temporary ftp issue, retrying in: %s",FTP_RETRY_SLEEP)
+                logger.warning("Temporary ftp issue, retrying in: %s", FTP_RETRY_SLEEP)
                 time.sleep(FTP_RETRY_SLEEP)
             else:
                 break
@@ -420,7 +421,7 @@ class prepareData:
                 concatenated.to_netcdf(self.settings.netcdf_combined_rainfall_file)
 
     def netcdf_to_ascii(self):
-        for f in glob.glob(str(self.settings.rain_grids_folder)+"/*.asc"):
+        for f in glob.glob(str(self.settings.rain_grids_folder) + "/*.asc"):
             os.remove(f)
         nc_data_obj = nc.Dataset(self.settings.netcdf_combined_rainfall_file)
         Lon = nc_data_obj.variables["x"][:]
@@ -429,12 +430,10 @@ class prepareData:
             nc_data_obj.variables["rainfall_depth"]
         )  # read data into an array
         # the upper-left and lower-right coordinates of the image
-        LonMin, LatMax, LonMax, LatMin = [Lon.min(), Lat.max(), Lon.max(), Lat.min()]
+        LonMin, LatMax, LatMin = [Lon.min(), Lat.max(), Lat.min()]
 
         # resolution calculation
         N_Lat = len(Lat)
-        N_Lon = len(Lon)
-        Lon_Res = (LonMax - LonMin) / (float(N_Lon) - 1)
         Lat_Res = (LatMax - LatMin) / (float(N_Lat) - 1)
 
         for i in range(len(precip_arr[:])):
@@ -458,8 +457,8 @@ class prepareData:
 
         time_stamps = nc_data_obj.variables["time"][:]
         file_names = []
-        for time in time_stamps:
-            file_names.append("RFG\\" + str(time) + ".asc")
+        for timestamp in time_stamps:
+            file_names.append("RFG\\" + str(timestamp) + ".asc")
         df = pd.DataFrame()
         df["Time (hrs)"] = time_stamps
         df["Rainfall Grid"] = file_names

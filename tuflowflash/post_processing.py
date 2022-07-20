@@ -1,25 +1,30 @@
-import os
+from osgeo import gdalconst
+from osgeo import osr
+from requests.adapters import HTTPAdapter
+from requests.adapters import Retry
+from time import sleep
 
-from osgeo import gdalconst, osr
-from requests.adapters import HTTPAdapter, Retry
+import os
 import pandas as pd
+
 
 try:
     import gdal
 except:
     from osgeo import gdal
 
+from pathlib import Path
+
 import datetime
 import glob
-import logging
-from pathlib import Path
 import json
-import requests
-import shutil
-import pytz
-
+import logging
 import netCDF4 as nc
 import numpy as np
+import pytz
+import requests
+import shutil
+
 
 logger = logging.getLogger(__name__)
 RASTER_SOURCES_URL = (
@@ -29,10 +34,9 @@ RASTER_SOURCES_URL = (
 TIMESERIES_URL = "https://rhdhv.lizard.net/api/v4/timeseries/"
 
 S = requests.Session()
-retries = Retry(total=5,
-                backoff_factor=0.1,
-                status_forcelist=[ 500, 502, 503, 504 ])
-S.mount('http://', HTTPAdapter(max_retries=retries))
+retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
+S.mount("http://", HTTPAdapter(max_retries=retries))
+
 
 class ProcessFlash:
     def __init__(self, settings):
@@ -304,9 +308,13 @@ class ProcessFlash:
             S.delete(url=url, headers=json_headers)
             file = {"file": open(file, "rb")}
             data = {"timestamp": lizard_timestamp}
-            r=S.post(url=url, data=data, files=file, headers=headers)
+            r = S.post(url=url, data=data, files=file, headers=headers)
             while requests.get(url=r.json()["url"]).json()["status"] != "SUCCESS":
-                print("raster upload status: {}".format(requests.get(url=r.json()["url"]).json()["status"]))
+                print(
+                    "raster upload status: {}".format(
+                        requests.get(url=r.json()["url"]).json()["status"]
+                    )
+                )
                 sleep(3)
         return
 
@@ -323,7 +331,7 @@ class ProcessFlash:
             for x in range(len(row) - 1, 0, -1):
                 url_to_update = TIMESERIES_URL + row[x] + "/events/"
                 source_data_url = TIMESERIES_URL + row[x - 1] + "/events/"
-                S.delete(url=url_to_update,headers=headers)
+                S.delete(url=url_to_update, headers=headers)
                 r = S.get(url=source_data_url, params=params, headers=headers)
                 source_df = pd.DataFrame(r.json()["results"])
                 try:
