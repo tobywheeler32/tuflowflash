@@ -1,0 +1,11 @@
+# Install ourselves (".") in editable ("-e") mode. Include the test ([test])
+# dependencies.
+-e .[test]
+
+# Extra development dependencies
+black
+coveralls
+flake8
+isort >= 5
+wheel
+zest.releaser
