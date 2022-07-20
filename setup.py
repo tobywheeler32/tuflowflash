@@ -9,7 +9,7 @@ long_description = "\n\n".join(
     ]
 )
 
-install_requires=["gdal==2.2.2","argparse","requests","configparser","typing","cftime","netCDF4","pandas"]
+install_requires=["gdal","argparse","requests","configparser","typing","cftime","netCDF4","pandas"]
 
 tests_require = [
     "mock",
