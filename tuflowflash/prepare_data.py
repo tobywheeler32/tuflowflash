@@ -151,12 +151,20 @@ class prepareData:
             )
             if r.ok:
                 ts_df = pd.DataFrame(r.json()["results"])
-                ts_df = ts_df[["time", "value"]]
-                ts_df = ts_df.rename(columns={"value": row["gauge_name"]})
-                ts_df.set_index("time", inplace=True)
-                ts_df.index = pd.to_datetime(ts_df.index)
-                timeseries_df_list.append(ts_df)
-                gauge_names_list.append(row["gauge_name"])
+                if 'time' in ts_df.columns:
+                    ts_df = ts_df[["time", "value"]]
+                    ts_df = ts_df.rename(columns={"value": row["gauge_name"]})
+                    ts_df.set_index("time", inplace=True)
+                    ts_df.index = pd.to_datetime(ts_df.index)
+                    timeseries_df_list.append(ts_df)
+                    gauge_names_list.append(row["gauge_name"])
+                else:
+                    data = {"time":utc_start,row["gauge_name"]:-99}
+                    ts_df = pd.DataFrame(data)
+                    ts_df.set_index("time",inplace=True)
+                    ts_df.index = pd.to_datetime(ts_df.index)
+                    timeseries_df_list.append(ts_df)
+                    gauges_names_list.append(row["gauge_name"])
 
         result = pd.concat(timeseries_df_list, axis=1)
         return result
