@@ -23,6 +23,10 @@ jobs:
       - name: build
         run: |
           python3 -m venv .
+          sudo apt-add-repository ppa:ubuntugis/ubuntugis-unstable
+          sudo apt-get update
+          sudo apt-get install gdal-bin libgdal-dev
+          pip install GDAL==3.2.3
           bin/pip install -r requirements.txt
       - name: test
         run: make test
