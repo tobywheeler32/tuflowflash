@@ -2,6 +2,7 @@ from pathlib import Path
 from pyproj import Proj
 from pyproj import Transformer
 from typing import List
+from requests.adapters import HTTPAdapter, Retry
 
 import cftime
 import ftplib
@@ -28,6 +29,12 @@ logger = logging.getLogger(__name__)
 TIMESERIES_URL = "https://rhdhv.lizard.net/api/v4/timeseries/{}/events/"
 FTP_RETRY_COUNT = 10
 FTP_RETRY_SLEEP = 5
+
+S = requests.Session()
+retries = Retry(total=5,
+                backoff_factor=0.1,
+                status_forcelist=[ 500, 502, 503, 504 ])
+S.mount('http://', HTTPAdapter(max_retries=retries))
 
 class MissingFileException(Exception):
     pass
@@ -144,7 +151,7 @@ class prepareData:
             "page_size": 100000,
         }
         for index, row in rainfall_timeseries.iterrows():
-            r = requests.get(
+            r = S.get(
                 TIMESERIES_URL.format(row["gauge_uuid"]),
                 params=params,
                 headers=json_headers,
