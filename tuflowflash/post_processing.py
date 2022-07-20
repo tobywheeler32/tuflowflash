@@ -1,6 +1,7 @@
 import os
 
 from osgeo import gdalconst, osr
+from requests.adapters import HTTPAdapter, Retry
 import pandas as pd
 
 try:
@@ -27,6 +28,11 @@ RASTER_SOURCES_URL = (
 
 TIMESERIES_URL = "https://rhdhv.lizard.net/api/v4/timeseries/"
 
+S = requests.Session()
+retries = Retry(total=5,
+                backoff_factor=0.1,
+                status_forcelist=[ 500, 502, 503, 504 ])
+S.mount('http://', HTTPAdapter(max_retries=retries))
 
 class ProcessFlash:
     def __init__(self, settings):
@@ -49,7 +55,7 @@ class ProcessFlash:
             timestamp = self.settings.start_time + datetime.timedelta(
                 hours=float(file_timestamp)
             )
-            timestamps.append(timestamp) #note: water depth should be switched back on after crisis
+            timestamps.append(timestamp)
         self.post_temporal_raster_to_lizard(
             filenames, self.settings.depth_raster_uuid, timestamps
         )
@@ -225,8 +231,8 @@ class ProcessFlash:
         for index, row in result_ts_uuids.iterrows():
             timeserie = self.create_post_element(results_dataframe[row["po_name"]])
             url = TIMESERIES_URL + row["ts_uuid"] + "/events/"
-            requests.delete(url=url, headers=headers)
-            requests.post(url=url, data=json.dumps(timeserie), headers=headers)
+            S.delete(url=url, headers=headers)
+            S.post(url=url, data=json.dumps(timeserie), headers=headers)
 
     def NC_to_tiffs(self, Output_folder):
         nc_data_obj = nc.Dataset(self.settings.netcdf_rainfall_file)
@@ -295,10 +301,10 @@ class ProcessFlash:
             logger.debug("posting file %s to lizard", file)
             lizard_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:00")
             lizard_timestamp = lizard_timestamp + timezone_stamp
-            requests.delete(url=url, headers=json_headers)
+            S.delete(url=url, headers=json_headers)
             file = {"file": open(file, "rb")}
             data = {"timestamp": lizard_timestamp}
-            r=requests.post(url=url, data=data, files=file, headers=headers)
+            r=S.post(url=url, data=data, files=file, headers=headers)
             while requests.get(url=r.json()["url"]).json()["status"] != "SUCCESS":
                 print("raster upload status: {}".format(requests.get(url=r.json()["url"]).json()["status"]))
                 sleep(3)
@@ -317,8 +323,8 @@ class ProcessFlash:
             for x in range(len(row) - 1, 0, -1):
                 url_to_update = TIMESERIES_URL + row[x] + "/events/"
                 source_data_url = TIMESERIES_URL + row[x - 1] + "/events/"
-                requests.delete(url=url_to_update,headers=headers)
-                r = requests.get(url=source_data_url, params=params, headers=headers)
+                S.delete(url=url_to_update,headers=headers)
+                r = S.get(url=source_data_url, params=params, headers=headers)
                 source_df = pd.DataFrame(r.json()["results"])
                 try:
                     source_df["time"] = pd.to_datetime(source_df["time"])
@@ -328,7 +334,7 @@ class ProcessFlash:
                         timeserie_data.append(
                             {"time": index.isoformat(), "value": str(value)}
                         )
-                    r = requests.post(
+                    r = S.post(
                         url=url_to_update,
                         data=json.dumps(timeserie_data),
                         headers=headers,
