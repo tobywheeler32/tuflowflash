@@ -164,7 +164,7 @@ class prepareData:
                     ts_df.set_index("time",inplace=True)
                     ts_df.index = pd.to_datetime(ts_df.index)
                     timeseries_df_list.append(ts_df)
-                    gauges_names_list.append(row["gauge_name"])
+                    gauge_names_list.append(row["gauge_name"])
 
         result = pd.concat(timeseries_df_list, axis=1)
         return result
