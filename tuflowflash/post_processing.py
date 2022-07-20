@@ -36,7 +36,7 @@ TIMESERIES_URL = "https://rhdhv.lizard.net/api/v4/timeseries/"
 S = requests.Session()
 retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
 S.mount("http://", HTTPAdapter(max_retries=retries))
-
+MAXWAITTIME_RASTER_UPLOAD = 120
 
 class ProcessFlash:
     def __init__(self, settings):
@@ -302,6 +302,7 @@ class ProcessFlash:
             "+" + str(int(aus_now.utcoffset().total_seconds() / 3600)).zfill(2) + ":00"
         )
         S.delete(url=url, headers=json_headers)
+        
         for file, timestamp in zip(filenames, timestamps):
             logger.debug("posting file %s to lizard", file)
             lizard_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:00")
@@ -309,12 +310,16 @@ class ProcessFlash:
             file = {"file": open(file, "rb")}
             data = {"timestamp": lizard_timestamp}
             r = S.post(url=url, data=data, files=file, headers=headers)
-            while S.get(url=r.json()["url"]).json()["status"] != "SUCCESS":
-                print(
-                    "raster upload status: {}".format(
-                        S.get(url=r.json()["url"]).json()["status"]
-                    )
-                )
+            
+            try:
+                r.raise_for_status()
+            except:
+                logger.error("Error, file post for %s failed",file)
+
+            waittime = 0
+            while (S.get(url=r.json()["url"]).json()["status"] not in ["SUCCESS", "FAILURE"]) and (waittime <= MAXWAITTIME_RASTER_UPLOAD):
+                logger.info("raster: %s upload status: %s",file,S.get(url=r.json()["url"]).json()["status"])
+                waittime += 3
                 sleep(3)
         return
 
