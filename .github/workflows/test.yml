@@ -4,7 +4,7 @@ name: test
 on:
   push:
     branches:
-      - main
+      - TEMPNOAUTORUNBECAUSEOFGDALDEPENDENCY
     tags:
       - "*"
   pull_request:
