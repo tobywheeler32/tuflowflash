@@ -302,7 +302,7 @@ class ProcessFlash:
         timezone_stamp = (
             "+" + str(int(aus_now.utcoffset().total_seconds() / 3600)).zfill(2) + ":00"
         )
-        S.delete(url=url, headers=json_headers)
+        requests.delete(url=url, headers=json_headers)
 
         for file, timestamp in zip(filenames, timestamps):
             logger.debug("posting file %s to lizard", file)
@@ -345,7 +345,7 @@ class ProcessFlash:
                 url_to_update = TIMESERIES_URL + row[x] + "/events/"
                 source_data_url = TIMESERIES_URL + row[x - 1] + "/events/"
                 requests.delete(url=url_to_update, headers=headers)
-                r = requests.get(url=source_data_url, params=params, headers=headers)
+                r = S.get(url=source_data_url, params=params, headers=headers)
                 source_df = pd.DataFrame(r.json()["results"])
                 try:
                     source_df["time"] = pd.to_datetime(source_df["time"])
@@ -355,7 +355,7 @@ class ProcessFlash:
                         timeserie_data.append(
                             {"time": index.isoformat(), "value": str(value)}
                         )
-                    r = requests.post(
+                    r = S.post(
                         url=url_to_update,
                         data=json.dumps(timeserie_data),
                         headers=headers,
