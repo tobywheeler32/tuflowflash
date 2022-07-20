@@ -301,18 +301,18 @@ class ProcessFlash:
         timezone_stamp = (
             "+" + str(int(aus_now.utcoffset().total_seconds() / 3600)).zfill(2) + ":00"
         )
+        S.delete(url=url, headers=json_headers)
         for file, timestamp in zip(filenames, timestamps):
             logger.debug("posting file %s to lizard", file)
             lizard_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:00")
             lizard_timestamp = lizard_timestamp + timezone_stamp
-            S.delete(url=url, headers=json_headers)
             file = {"file": open(file, "rb")}
             data = {"timestamp": lizard_timestamp}
             r = S.post(url=url, data=data, files=file, headers=headers)
-            while requests.get(url=r.json()["url"]).json()["status"] != "SUCCESS":
+            while S.get(url=r.json()["url"]).json()["status"] != "SUCCESS":
                 print(
                     "raster upload status: {}".format(
-                        requests.get(url=r.json()["url"]).json()["status"]
+                        S.get(url=r.json()["url"]).json()["status"]
                     )
                 )
                 sleep(3)
