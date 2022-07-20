@@ -7,5 +7,6 @@ dependencies:
   - geopandas
   - configparser
   - rioxarray
+  - git
   - pip:
     - git+https://github.com/lokhorstivar/tuflowflash.git
