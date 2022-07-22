@@ -487,5 +487,6 @@ class prepareData:
         df = pd.DataFrame()
         df["Time (hrs)"] = rain_timestamp_list
         df["Rainfall Grid"] = file_names
+        df.sort_values("Time (hrs)", inplace=True)
         df.set_index("Time (hrs)", inplace=True)
         df.to_csv(self.settings.rain_grids_csv)
