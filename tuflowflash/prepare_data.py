@@ -485,7 +485,7 @@ class prepareData:
             rain_timestamp_list.append(float(Path(f).stem))
             file_names.append("RFG\\"+Path(f).name)
         df = pd.DataFrame()
-        df["Time (hrs)"] = time_stamps
+        df["Time (hrs)"] = rain_timestamp_list
         df["Rainfall Grid"] = file_names
         df.set_index("Time (hrs)", inplace=True)
         df.to_csv(self.settings.rain_grids_csv)
