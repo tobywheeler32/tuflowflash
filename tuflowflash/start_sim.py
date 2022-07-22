@@ -109,8 +109,9 @@ def main():
                     settings.netcdf_nowcast_rainfall_file, previous_time
                 )
             if settings.get_bom_forecast:
+                previous_time = get_latest_raingrid(settings.rain_grids_folder)
                 data_prepper.forecast_nowcast_netcdf_to_ascii(
-                    settings.netcdf_forecast_rainfall_file
+                    settings.netcdf_forecast_rainfall_file,previous_time
                 )
             data_prepper.write_ascii_csv()
         else:
