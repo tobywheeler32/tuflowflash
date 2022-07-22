@@ -19,7 +19,7 @@ OWN_EXCEPTIONS = (
 
 def get_latest_raingrid(folder):
     rain_timestamp_list = []
-    for f in glob.glob(folder + "/*.asc"):
+    for f in glob.glob(str(folder) + "/*.asc"):
         rain_timestamp_list.append(float(Path(f).stem))
     if rain_timestamp_list:
         return max(rain_timestamp_list)
