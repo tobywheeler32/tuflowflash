@@ -5,6 +5,7 @@ from requests.adapters import HTTPAdapter
 from requests.adapters import Retry
 from shapely.geometry import mapping
 from typing import List
+from datetime import datetime
 
 import cftime
 import ftplib
@@ -408,9 +409,63 @@ class prepareData:
                 comments="",
             )
 
-    def hindcast_netcdf_to_ascii(self):
+    def select_hindcast_netcdf_files(self):
+        local = pytz.timezone("Australia/Sydney")
+        local_start = local.localize(self.settings.start_time, is_dst=None)
+        utc_start = local_start.astimezone(pytz.utc)
+        local_end = local.localize(self.settings.end_time, is_dst=None)
+        utc_end = local_end.astimezone(pytz.utc)
+        local_reference = local.localize(self.settings.reference_time, is_dst=None)
+        utc_reference = local_reference.astimezone(pytz.utc)
         for f in glob.glob(str(self.settings.historic_rain_folder) + "/*.nc"):
-            print(f)
+            f_timestamp = datetime.strptime(f.split(".")[-2], "%Y%m%d%H%M%S")
+            if f_timestamp > utc_start and f_timestamp < utc_end:
+                timestamp_difference = f_timestamp - utc_reference
+                timediff_hours = (
+                    timestamp_difference.days * 86400 + timestamp_difference.seconds
+                ) / 3600
+                self.hindcast_netcdf_to_ascii(
+                    f,
+                    os.path.join(
+                        self.settings.rain_grids_folder, str(timediff_hours) + ".asc"
+                    ),
+                )
+
+    def hindcast_netcdf_to_ascii(self, netcdf_rainfall_file, ascii_outfile):
+
+        nc_data_obj = nc.Dataset(netcdf_rainfall_file)
+        x_center, y_center = self.reproject_bom(
+            nc_data_obj.variables["proj"].longitude_of_central_meridian,
+            nc_data_obj.variables["proj"].latitude_of_projection_origin,
+        )
+        Lon = nc_data_obj.variables["x"][:] * 1000 + x_center
+        Lat = nc_data_obj.variables["y"][:] * 1000 + y_center
+        precip_arr = np.asarray(
+            nc_data_obj.variables["precipitation"]
+        )  # read data into an array
+        precip_arr[:, :] = np.where(
+            precip_arr == nc_data_obj.variables["precipitation"]._FillValue,
+            0,
+            precip_arr,
+        )
+        precip_arr = precip_arr / 20
+        # the upper-left and lower-right coordinates of the image
+        LonMin, LatMax, LatMin = [Lon.min(), Lat.max(), Lat.min()]
+
+        # resolution calculation
+        N_Lat = len(Lat)
+        Lat_Res = (LatMax - LatMin) / (float(N_Lat) - 1)
+
+        header = "ncols     %s\n" % precip_arr.shape[1]
+        header += "nrows    %s\n" % precip_arr.shape[0]
+        header += "xllcorner {}\n".format(LonMin)
+        header += "yllcorner {}\n".format(LatMin)
+        header += "cellsize {}\n".format(Lat_Res)
+        header += "NODATA_value -9999\n"
+
+        np.savetxt(
+            ascii_outfile, precip_arr, header=header, fmt="%1.2f", comments="",
+        )
 
     def write_ascii_csv(self):
         time_stamps = nc_data_obj.variables["time"][:]

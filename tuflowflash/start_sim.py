@@ -90,16 +90,16 @@ def main():
         ):
             for f in glob.glob(str(settings.rain_grids_folder) + "/*.asc"):
                 os.remove(f)
+            if settings.use_bom_historical:
+                data_prepper.select_hindcast_netcdf_files()
             if settings.get_bom_nowcast:
                 data_prepper.forecast_nowcast_netcdf_to_ascii(
                     settings.netcdf_nowcast_rainfall_file
-                )  # PLEASE NOTE: NOW ALWAYS CONVERTING NC TO ASCII PROVIDE CSV FILE IN TCF
+                )
             if settings.get_bom_forecast:
                 data_prepper.forecast_nowcast_netcdf_to_ascii(
                     settings.netcdf_forecast_rainfall_file
-                )  # PLEASE NOTE: NOW ALWAYS CONVERTING NC TO ASCII PROVIDE CSV FILE IN TCF
-            if settings.use_bom_historical:
-                data_prepper.hindcast_netcdf_to_ascii()
+                )
             data_prepper.write_ascii_csv()
         else:
             logger.info("not converting bom products to ascii, skipping..")
