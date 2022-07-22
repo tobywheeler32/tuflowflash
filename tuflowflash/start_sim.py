@@ -5,7 +5,8 @@ from tuflowflash import run_tuflow
 
 import argparse
 import logging
-
+import os
+import glob
 
 logger = logging.getLogger(__name__)
 
@@ -82,11 +83,26 @@ def main():
         else:
             logger.info("not gathering bom nowcast rainfall data, skipping..")
 
-        if settings.combine_bom_data:
-            data_prepper.merge_bom_forecasts()
-            data_prepper.netcdf_to_ascii()  # PLEASE NOTE: NOW ALWAYS CONVERTING NC TO ASCII PROVIDE CSV FILE IN TCF
+        if (
+            settings.get_bom_forecast
+            or settings.get_bom_nowcast
+            or settings.use_bom_historical
+        ):
+            for f in glob.glob(str(settings.rain_grids_folder) + "/*.asc"):
+                os.remove(f)
+            if settings.get_bom_nowcast:
+                data_prepper.forecast_nowcast_netcdf_to_ascii(
+                    settings.netcdf_nowcast_rainfall_file
+                )  # PLEASE NOTE: NOW ALWAYS CONVERTING NC TO ASCII PROVIDE CSV FILE IN TCF
+            if settings.get_bom_forecast:
+                data_prepper.forecast_nowcast_netcdf_to_ascii(
+                    settings.netcdf_forecast_rainfall_file
+                )  # PLEASE NOTE: NOW ALWAYS CONVERTING NC TO ASCII PROVIDE CSV FILE IN TCF
+            if settings.use_bom_historical:
+                data_prepper.hindcast_netcdf_to_ascii()
+            data_prepper.write_ascii_csv()
         else:
-            logger.info("not combining bom products, skipping..")
+            logger.info("not converting bom products to ascii, skipping..")
 
         if settings.convert_csv_to_bc:
             data_prepper.convert_csv_file_to_bc_file()

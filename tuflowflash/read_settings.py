@@ -42,7 +42,7 @@ switches_settings = {
     "convert_csv_to_bc": bool,
     "get_bom_forecast": bool,
     "get_bom_nowcast": bool,
-    "combine_bom_data": bool,
+    "use_bom_historical": bool,
     "run_simulation": bool,
     "post_to_lizard": bool,
     "archive_simulation": bool,
@@ -56,6 +56,7 @@ bom_settings = {
     "bom_url": str,
     "bom_forecast_file": str,
     "bom_nowcast_file": str,
+    "historic_rain_folder": str,
     "forecast_clipshape": Path,
 }
 
@@ -165,9 +166,7 @@ class FlashSettings:
                         setattr(self, variable, str(value))
                     if datatype == bool:
                         setattr(
-                            self,
-                            variable,
-                            value.lower() == "true",
+                            self, variable, value.lower() == "true",
                         )
                     if datatype == list:
                         input_list = string_to_list(value)

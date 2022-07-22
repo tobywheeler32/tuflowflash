@@ -21,7 +21,6 @@ import requests
 import rioxarray
 import shutil
 import time
-import xarray as xr
 
 
 logger = logging.getLogger(__name__)
@@ -47,9 +46,7 @@ class prepareData:
         logger.info("Started gathering historical precipitation data")
         rainfall_gauges_uuids = self.read_rainfall_timeseries_uuids()
 
-        rain_df = self.get_lizard_timeseries(
-            rainfall_gauges_uuids,
-        )
+        rain_df = self.get_lizard_timeseries(rainfall_gauges_uuids,)
         logger.info("gathered lizard rainfall timeseries")
 
         ## preprocess rain data
@@ -302,9 +299,6 @@ class prepareData:
 
             if name == "precipitation":
                 target.createVariable("rainfall_depth", float, ("time", "y", "x"))
-                target.variables["rainfall_depth"].setncatts(
-                    {"grid_mapping": "spatial_ref"}
-                )
             elif name == "valid_time":
                 target.createVariable("time", float, "time")
                 target.variables["time"].setncatts(
@@ -351,8 +345,6 @@ class prepareData:
                 target.variables[name][:] = data * 1000 + x_center
             elif name == "y":
                 target.variables[name][:] = data * 1000 + y_center
-        crs = target.createVariable("spatial_ref", "i4")
-        crs.spatial_ref = 'PROJCS["GDA2020_MGA_Zone_56",GEOGCS["GCS_GDA2020",DATUM["GDA2020",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",500000.0],PARAMETER["False_Northing",10000000.0],PARAMETER["Central_Meridian",153.0],PARAMETER["Scale_Factor",0.9996],PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]]'
         # Save the file.
         target.close()
         source.close()
@@ -383,47 +375,8 @@ class prepareData:
         x2, y2 = transformer.transform(y, x)
         return x2, y2
 
-    def merge_bom_forecasts(self):
-        with rioxarray.open_rasterio(
-            self.settings.netcdf_forecast_rainfall_file
-        ) as bom_forecast_da:
-            with rioxarray.open_rasterio(
-                self.settings.netcdf_nowcast_rainfall_file
-            ) as bom_nowcast_da:
-                bom_nowcast_da = bom_nowcast_da.rio.write_crs(7856)
-                geodf = geopandas.read_file(self.settings.forecast_clipshape)
-                geodf.to_crs(7856)
-                bom_nowcast_da = bom_nowcast_da.rio.clip(
-                    geodf.geometry.apply(mapping), geodf.crs
-                )
-                bom_nowcast_da[:, :, :] = np.where(
-                    bom_nowcast_da == bom_nowcast_da.attrs["_FillValue"],
-                    0,
-                    bom_nowcast_da,
-                )
-                bom_nowcast_da = bom_nowcast_da.assign_coords(
-                    time=bom_nowcast_da["time"].astype("float") / 3600000000000.0
-                )  # because it is read as nano seconds
-                bom_forecast_da = bom_forecast_da.rio.reproject_match(bom_nowcast_da)
-                bom_forecast_da[:, :, :] = np.where(
-                    bom_forecast_da == bom_forecast_da.attrs["_FillValue"],
-                    0,
-                    bom_forecast_da,
-                )
-                bom_forecast_da = bom_forecast_da.assign_coords(
-                    time=bom_forecast_da["time"].astype("float32")
-                )
-                bom_forecast_da = bom_forecast_da.sel(
-                    time=slice(max(bom_nowcast_da["time"]) + 1.5, 1000000)
-                )
-                concatenated = xr.concat([bom_nowcast_da, bom_forecast_da], "time")
-                concatenated = concatenated.fillna(0)
-                concatenated.to_netcdf(self.settings.netcdf_combined_rainfall_file)
-
-    def netcdf_to_ascii(self):
-        for f in glob.glob(str(self.settings.rain_grids_folder) + "/*.asc"):
-            os.remove(f)
-        nc_data_obj = nc.Dataset(self.settings.netcdf_combined_rainfall_file)
+    def forecast_nowcast_netcdf_to_ascii(self, netcdf_file):
+        nc_data_obj = nc.Dataset(netcdf_file)
         Lon = nc_data_obj.variables["x"][:]
         Lat = nc_data_obj.variables["y"][:]
         precip_arr = np.asarray(
@@ -455,6 +408,11 @@ class prepareData:
                 comments="",
             )
 
+    def hindcast_netcdf_to_ascii(self):
+        for f in glob.glob(str(self.settings.historic_rain_folder) + "/*.nc"):
+            print(f)
+
+    def write_ascii_csv(self):
         time_stamps = nc_data_obj.variables["time"][:]
         file_names = []
         for timestamp in time_stamps:
