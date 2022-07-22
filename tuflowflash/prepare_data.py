@@ -418,7 +418,7 @@ class prepareData:
         local_reference = local.localize(self.settings.reference_time, is_dst=None)
         utc_reference = local_reference.astimezone(pytz.utc)
         for f in glob.glob(str(self.settings.historic_rain_folder) + "/*.nc"):
-            f_timestamp = datetime.strptime(f.split(".")[-2], "%Y%m%d%H%M%S")
+            f_timestamp = datetime.strptime(f.split(".")[-2], "%Y%m%d%H%M%S",pytz.utc)
             print(utc_start.timestamp())
             print(f_timestamp.timestamp())
             if f_timestamp.timestamp() > utc_start.timestamp() and f_timestamp.timestamp() < utc_end.timestamp():
