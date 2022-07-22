@@ -2,6 +2,7 @@ from tuflowflash import post_processing
 from tuflowflash import prepare_data
 from tuflowflash import read_settings
 from tuflowflash import run_tuflow
+from pathlib import Path
 
 import argparse
 import logging
@@ -14,6 +15,16 @@ OWN_EXCEPTIONS = (
     read_settings.MissingFileException,
     read_settings.MissingSettingException,
 )
+
+
+def get_latest_raingrid(folder):
+    rain_timestamp_list = []
+    for f in glob.glob(folder + "/*.asc"):
+        rain_timestamp_list.append(float(Path(f).stem))
+    if rain_timestamp_list:
+        return max(rain_timestamp_list)
+    else:
+        return -9999
 
 
 def get_parser():
@@ -93,8 +104,9 @@ def main():
             if settings.use_bom_historical:
                 data_prepper.select_hindcast_netcdf_files()
             if settings.get_bom_nowcast:
+                previous_time = get_latest_raingrid(settings.rain_grids_folder)
                 data_prepper.forecast_nowcast_netcdf_to_ascii(
-                    settings.netcdf_nowcast_rainfall_file
+                    settings.netcdf_nowcast_rainfall_file, previous_time
                 )
             if settings.get_bom_forecast:
                 data_prepper.forecast_nowcast_netcdf_to_ascii(

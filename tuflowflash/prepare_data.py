@@ -376,12 +376,17 @@ class prepareData:
         x2, y2 = transformer.transform(y, x)
         return x2, y2
 
-    def forecast_nowcast_netcdf_to_ascii(self, netcdf_file):
+    def forecast_nowcast_netcdf_to_ascii(self, netcdf_file, previous_time):
         nc_data_obj = nc.Dataset(netcdf_file)
         Lon = nc_data_obj.variables["x"][:]
         Lat = nc_data_obj.variables["y"][:]
+        time_indexes = [
+            idx
+            for idx, element in enumerate(nc_data_obj.variables["time"][:])
+            if element > previous_time
+        ]
         precip_arr = np.asarray(
-            nc_data_obj.variables["rainfall_depth"]
+            nc_data_obj.variables["rainfall_depth"][time_indexes, :, :]
         )  # read data into an array
         # the upper-left and lower-right coordinates of the image
         LonMin, LatMax, LatMin = [Lon.min(), Lat.max(), Lat.min()]
@@ -401,7 +406,7 @@ class prepareData:
             np.savetxt(
                 os.path.join(
                     self.settings.rain_grids_folder,
-                    str(nc_data_obj.variables["time"][i]) + ".asc",
+                    str(nc_data_obj.variables["time"][time_indexes[i]]) + ".asc",
                 ),
                 precip_arr[i],
                 header=header,
@@ -418,10 +423,13 @@ class prepareData:
         local_reference = local.localize(self.settings.reference_time, is_dst=None)
         utc_reference = local_reference.astimezone(pytz.utc)
         for f in glob.glob(str(self.settings.historic_rain_folder) + "/*.nc"):
-            f_timestamp = pytz.utc.localize(datetime.strptime(f.split(".")[-2], "%Y%m%d%H%M%S"))
-            print(utc_start.timestamp())
-            print(f_timestamp.timestamp())
-            if f_timestamp.timestamp() > utc_start.timestamp() and f_timestamp.timestamp() < utc_end.timestamp():
+            f_timestamp = pytz.utc.localize(
+                datetime.strptime(f.split(".")[-2], "%Y%m%d%H%M%S")
+            )
+            if (
+                f_timestamp.timestamp() > utc_start.timestamp()
+                and f_timestamp.timestamp() < utc_end.timestamp()
+            ):
                 timestamp_difference = f_timestamp - utc_reference
                 timediff_hours = (
                     timestamp_difference.days * 86400 + timestamp_difference.seconds
