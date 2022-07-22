@@ -6,6 +6,7 @@ from requests.adapters import Retry
 from shapely.geometry import mapping
 from typing import List
 from datetime import datetime
+from pathlib import Path
 
 import cftime
 import ftplib
@@ -478,13 +479,13 @@ class prepareData:
         )
 
     def write_ascii_csv(self):
-        time_stamps = nc_data_obj.variables["time"][:]
+        rain_timestamp_list = []
         file_names = []
-        for timestamp in time_stamps:
-            file_names.append("RFG\\" + str(timestamp) + ".asc")
+        for f in glob.glob(str(self.settings.rain_grids_folder) + "/*.asc"):
+            rain_timestamp_list.append(float(Path(f).stem))
+            file_names.append("RFG\\"+Path(f).name)
         df = pd.DataFrame()
         df["Time (hrs)"] = time_stamps
         df["Rainfall Grid"] = file_names
         df.set_index("Time (hrs)", inplace=True)
         df.to_csv(self.settings.rain_grids_csv)
-        nc_data_obj.close()
