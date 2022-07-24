@@ -316,8 +316,8 @@ class ProcessFlash:
                     file,
                     S.get(url=r.json()["url"]).json()["status"],
                 )
-                waittime += 3
-                sleep(3)
+                waittime += 30
+                sleep(30)
         return
 
     def track_historic_forecasts_in_lizard(self):
