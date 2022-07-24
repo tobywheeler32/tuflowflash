@@ -483,7 +483,7 @@ class prepareData:
         file_names = []
         for f in glob.glob(str(self.settings.rain_grids_folder) + "/*.asc"):
             rain_timestamp_list.append(float(Path(f).stem))
-            file_names.append("RFG\\"+Path(f).name)
+            file_names.append("RFG\\" + Path(f).name)
         df = pd.DataFrame()
         df["Time (hrs)"] = rain_timestamp_list
         df["Rainfall Grid"] = file_names
