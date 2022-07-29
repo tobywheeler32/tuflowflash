@@ -1,7 +1,5 @@
 from osgeo import gdalconst
 from osgeo import osr
-from requests.adapters import HTTPAdapter
-from requests.adapters import Retry
 from time import sleep
 
 import os
@@ -33,9 +31,6 @@ RASTER_SOURCES_URL = (
 
 TIMESERIES_URL = "https://rhdhv.lizard.net/api/v4/timeseries/"
 
-S = requests.Session()
-retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
-S.mount("http://", HTTPAdapter(max_retries=retries))
 MAXWAITTIME_RASTER_UPLOAD = 120
 
 
@@ -225,8 +220,8 @@ class ProcessFlash:
         for index, row in result_ts_uuids.iterrows():
             timeserie = self.create_post_element(results_dataframe[row["po_name"]])
             url = TIMESERIES_URL + row["ts_uuid"] + "/events/"
-            S.delete(url=url, headers=headers)
-            S.post(url=url, data=json.dumps(timeserie), headers=headers)
+            requests.delete(url=url, headers=headers)
+            requests.post(url=url, data=json.dumps(timeserie), headers=headers)
 
     def NC_to_tiffs(self, Output_folder):
         nc_data_obj = nc.Dataset(self.settings.netcdf_rainfall_file)
@@ -299,7 +294,7 @@ class ProcessFlash:
             lizard_timestamp = lizard_timestamp + timezone_stamp
             file = {"file": open(file, "rb")}
             data = {"timestamp": lizard_timestamp}
-            r = S.post(url=url, data=data, files=file, headers=headers)
+            r = requests.post(url=url, data=data, files=file, headers=headers)
 
             try:
                 r.raise_for_status()
@@ -308,16 +303,16 @@ class ProcessFlash:
 
             waittime = 0
             while (
-                S.get(url=r.json()["url"]).json()["status"]
+                requests.get(url=r.json()["url"]).json()["status"]
                 not in ["SUCCESS", "FAILURE"]
             ) and (waittime <= MAXWAITTIME_RASTER_UPLOAD):
                 logger.info(
                     "raster: %s upload status: %s",
                     file,
-                    S.get(url=r.json()["url"]).json()["status"],
+                    requests.get(url=r.json()["url"]).json()["status"],
                 )
-                waittime += 30
-                sleep(30)
+                waittime += 10
+                sleep(10)
         return
 
     def track_historic_forecasts_in_lizard(self):
@@ -334,7 +329,7 @@ class ProcessFlash:
                 url_to_update = TIMESERIES_URL + row[x] + "/events/"
                 source_data_url = TIMESERIES_URL + row[x - 1] + "/events/"
                 requests.delete(url=url_to_update, headers=headers)
-                r = S.get(url=source_data_url, params=params, headers=headers)
+                r = requests.get(url=source_data_url, params=params, headers=headers)
                 source_df = pd.DataFrame(r.json()["results"])
                 try:
                     source_df["time"] = pd.to_datetime(source_df["time"])
@@ -344,7 +339,7 @@ class ProcessFlash:
                         timeserie_data.append(
                             {"time": index.isoformat(), "value": str(value)}
                         )
-                    r = S.post(
+                    r = requests.post(
                         url=url_to_update,
                         data=json.dumps(timeserie_data),
                         headers=headers,
