@@ -428,12 +428,16 @@ class prepareData:
                 timediff_hours = (
                     timestamp_difference.days * 86400 + timestamp_difference.seconds
                 ) / 3600
-                self.hindcast_netcdf_to_ascii(
-                    f,
-                    os.path.join(
-                        self.settings.rain_grids_folder, str(timediff_hours) + ".asc"
-                    ),
-                )
+                try:
+                    self.hindcast_netcdf_to_ascii(
+                        f,
+                        os.path.join(
+                            self.settings.rain_grids_folder, str(timediff_hours) + ".asc"
+                        ),
+                    )
+                except OSError:
+                    logger.warning("Found historic netcdf file which is invalid, continuing")
+                    pass
 
     def hindcast_netcdf_to_ascii(self, netcdf_rainfall_file, ascii_outfile):
 
