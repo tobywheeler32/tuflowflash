@@ -42,7 +42,7 @@ class ProcessFlash:
         self.convert_flt_to_tiff()
         logger.info("Tuflow results converted to tiff")
         filenames = glob.glob(
-            os.path.join(self.settings.output_folder, "grids", "*[!Max]*.tif")
+            os.path.join(self.settings.raster_output_folder, "grids", "*[!Max]*.tif")
         )
         timestamps = []
         for (
@@ -87,7 +87,7 @@ class ProcessFlash:
             self.settings.archive_folder, "results_" + folder_time_string
         )
         os.mkdir(result_folder)
-        shutil.copytree("log", os.path.join(result_folder, "log"))
+        shutil.copytree("Log", os.path.join(result_folder, "log"))
         shutil.copytree(
             self.settings.output_folder, os.path.join(result_folder, "results")
         )
@@ -159,7 +159,7 @@ class ProcessFlash:
         file_path_list = []
         for file in self.settings.waterdepth_raster_upload_list:
             file_path_list.append(
-                os.path.join(self.settings.output_folder, "grids", file + ".flt")
+                os.path.join(self.settings.raster_output_folder, file + ".flt")
             )
 
         for file in file_path_list:
