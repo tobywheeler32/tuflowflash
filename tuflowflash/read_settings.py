@@ -19,6 +19,7 @@ Tuflow_settings = {
     "boundary_csv_tuflow_file": Path,
     "netcdf_forecast_rainfall_file": Path,
     "netcdf_nowcast_rainfall_file": Path,
+    "raster_output_folder": Path,
     "rain_grids_folder": Path,
     "rain_grids_csv": Path,
     "archive_folder": Path,
