@@ -262,84 +262,87 @@ class prepareData:
     def write_new_netcdf(
         self, source_file: Path, dest_file: Path, time_indexes: List, reference_time
     ):
-        with nc.Dataset(source_file) as source:
-            x_center, y_center = self.reproject_bom(
-                source.variables["proj"].longitude_of_central_meridian,
-                source.variables["proj"].latitude_of_projection_origin,
-            )
-            with nc.Dataset(dest_file, mode="w") as target:
-                p50_index = self.get_p50_netcdf_rainfall(source)
-                # Create the dimensions of the file.
-                for name, dim in source.dimensions.items():
-                    dim_length = len(dim)
-                    if name == "valid_time":
-                        dim_length = len(time_indexes)
-                        target.createDimension(
-                            "time", dim_length if not dim.isunlimited() else None
-                        )
-                    if name == "x" or name == "y":
-                        target.createDimension(
-                            name, dim_length if not dim.isunlimited() else None
-                        )
-                    if name == "precipitation":
-                        target.createDimension(
-                            "rainfall_depth", dim_length if not dim.isunlimited() else None
-                        )
+        source = nc.Dataset(source_file)
+        x_center, y_center = self.reproject_bom(
+            source.variables["proj"].longitude_of_central_meridian,
+            source.variables["proj"].latitude_of_projection_origin,
+        )
+        target = nc.Dataset(dest_file, mode="w")
+        p50_index = self.get_p50_netcdf_rainfall(source)
+        # Create the dimensions of the file.
+        for name, dim in source.dimensions.items():
+            dim_length = len(dim)
+            if name == "valid_time":
+                dim_length = len(time_indexes)
+                target.createDimension(
+                    "time", dim_length if not dim.isunlimited() else None
+                )
+            if name == "x" or name == "y":
+                target.createDimension(
+                    name, dim_length if not dim.isunlimited() else None
+                )
+            if name == "precipitation":
+                target.createDimension(
+                    "rainfall_depth", dim_length if not dim.isunlimited() else None
+                )
 
-                # Copy the global attributes.
-                target.setncatts({a: source.getncattr(a) for a in source.ncattrs()})
-                # Create the variables in the file.
+        # Copy the global attributes.
+        target.setncatts({a: source.getncattr(a) for a in source.ncattrs()})
+        # Create the variables in the file.
 
-                for name, var in source.variables.items():
+        for name, var in source.variables.items():
 
-                    if name == "precipitation":
-                        target.createVariable("rainfall_depth", float, ("time", "y", "x"))
-                    elif name == "valid_time":
-                        target.createVariable("time", float, "time")
-                        target.variables["time"].setncatts(
-                            {
-                                "standard_name": "time",
-                                "long_name": "time",
-                                "units": "hours",
-                                "axis": "T",
-                            }
-                        )
-                    elif name == "x":
-                        target.createVariable(name, var.dtype, var.dimensions)
-                        target.variables[name].setncatts(
-                            {
-                                "standard_name": "projection_x_coordinate",
-                                "long_name": "x-coordinate in cartesian system",
-                                "units": "m",
-                                "axis": "X",
-                            }
-                        )
-                    elif name == "y":
-                        target.createVariable(name, var.dtype, var.dimensions)
-                        target.variables[name].setncatts(
-                            {
-                                "standard_name": "projection_y_coordinate",
-                                "long_name": "y-coordinate in cartesian system",
-                                "units": "m",
-                                "axis": "Y",
-                            }
-                        )
+            if name == "precipitation":
+                target.createVariable("rainfall_depth", float, ("time", "y", "x"))
+            elif name == "valid_time":
+                target.createVariable("time", float, "time")
+                target.variables["time"].setncatts(
+                    {
+                        "standard_name": "time",
+                        "long_name": "time",
+                        "units": "hours",
+                        "axis": "T",
+                    }
+                )
+            elif name == "x":
+                target.createVariable(name, var.dtype, var.dimensions)
+                target.variables[name].setncatts(
+                    {
+                        "standard_name": "projection_x_coordinate",
+                        "long_name": "x-coordinate in cartesian system",
+                        "units": "m",
+                        "axis": "X",
+                    }
+                )
+            elif name == "y":
+                target.createVariable(name, var.dtype, var.dimensions)
+                target.variables[name].setncatts(
+                    {
+                        "standard_name": "projection_y_coordinate",
+                        "long_name": "y-coordinate in cartesian system",
+                        "units": "m",
+                        "axis": "Y",
+                    }
+                )
 
-                    data = source.variables[name][:]
-                    # Copy the variables values.
-                    if name == "valid_time":
-                        data = data[time_indexes]
-                        data = (data - reference_time.timestamp()) / 3600
-                        target.variables["time"][:] = data
-                    elif name == "precipitation":
-                        data = data[p50_index, time_indexes]
-                        data = data * 0.05
-                        data = np.where(data < 0, -999, data)
-                        target.variables["rainfall_depth"][:, :, :] = data
-                    elif name == "x":
-                        target.variables[name][:] = data * 1000 + x_center
-                    elif name == "y":
-                        target.variables[name][:] = data * 1000 + y_center
+            data = source.variables[name][:]
+            # Copy the variables values.
+            if name == "valid_time":
+                data = data[time_indexes]
+                data = (data - reference_time.timestamp()) / 3600
+                target.variables["time"][:] = data
+            elif name == "precipitation":
+                data = data[p50_index, time_indexes]
+                data = data * 0.05
+                data = np.where(data < 0, -999, data)
+                target.variables["rainfall_depth"][:, :, :] = data
+            elif name == "x":
+                target.variables[name][:] = data * 1000 + x_center
+            elif name == "y":
+                target.variables[name][:] = data * 1000 + y_center
+        # Save the file.
+        target.close()
+        source.close()
 
     def write_nowcast_netcdf_with_time_indexes(
         self, source_file: Path, dest_file: Path, start, end, reference_time
@@ -368,17 +371,17 @@ class prepareData:
         return x2, y2
 
     def forecast_nowcast_netcdf_to_ascii(self, netcdf_file, previous_time):
-        with nc.Dataset(netcdf_file) as nc_data_obj:
-            Lon = nc_data_obj.variables["x"][:]
-            Lat = nc_data_obj.variables["y"][:]
-            time_indexes = [
-                idx
-                for idx, element in enumerate(nc_data_obj.variables["time"][:])
-                if element > previous_time
-            ]
-            precip_arr = np.asarray(
-                nc_data_obj.variables["rainfall_depth"][time_indexes, :, :]
-            )  # read data into an array
+        nc_data_obj = nc.Dataset(netcdf_file)
+        Lon = nc_data_obj.variables["x"][:]
+        Lat = nc_data_obj.variables["y"][:]
+        time_indexes = [
+            idx
+            for idx, element in enumerate(nc_data_obj.variables["time"][:])
+            if element > previous_time
+        ]
+        precip_arr = np.asarray(
+            nc_data_obj.variables["rainfall_depth"][time_indexes, :, :]
+        )  # read data into an array
         # the upper-left and lower-right coordinates of the image
         LonMin, LatMax, LatMin = [Lon.min(), Lat.max(), Lat.min()]
 
@@ -438,21 +441,21 @@ class prepareData:
 
     def hindcast_netcdf_to_ascii(self, netcdf_rainfall_file, ascii_outfile):
 
-        with nc.Dataset(netcdf_rainfall_file) as nc_data_obj:
-            x_center, y_center = self.reproject_bom(
-                nc_data_obj.variables["proj"].longitude_of_central_meridian,
-                nc_data_obj.variables["proj"].latitude_of_projection_origin,
-            )
-            Lon = nc_data_obj.variables["x"][:] * 1000 + x_center
-            Lat = nc_data_obj.variables["y"][:] * 1000 + y_center
-            precip_arr = np.asarray(
-                nc_data_obj.variables["precipitation"]
-            )  # read data into an array
-            precip_arr[:, :] = np.where(
-                precip_arr == nc_data_obj.variables["precipitation"]._FillValue,
-                0,
-                precip_arr,
-            )
+        nc_data_obj = nc.Dataset(netcdf_rainfall_file)
+        x_center, y_center = self.reproject_bom(
+            nc_data_obj.variables["proj"].longitude_of_central_meridian,
+            nc_data_obj.variables["proj"].latitude_of_projection_origin,
+        )
+        Lon = nc_data_obj.variables["x"][:] * 1000 + x_center
+        Lat = nc_data_obj.variables["y"][:] * 1000 + y_center
+        precip_arr = np.asarray(
+            nc_data_obj.variables["precipitation"]
+        )  # read data into an array
+        precip_arr[:, :] = np.where(
+            precip_arr == nc_data_obj.variables["precipitation"]._FillValue,
+            0,
+            precip_arr,
+        )
         precip_arr = precip_arr / 20
         # the upper-left and lower-right coordinates of the image
         LonMin, LatMax, LatMin = [Lon.min(), Lat.max(), Lat.min()]
