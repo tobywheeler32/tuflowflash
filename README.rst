@@ -61,3 +61,5 @@ The expected information in settings.ini is::
   get_future_precipitation=True
   run_simulation=True
   post_to_lizard=True	
+
+read by toby
