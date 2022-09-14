@@ -91,11 +91,11 @@ class TuflowSimulation:
                 else:
                     valid_states.append(state)
             logger.info("Using state: %s", valid_states[-1])
-            shutil.copyfile(valid_states[-1], self.settings.restart_file.replace(".trf", ".erf")
+            shutil.copyfile(valid_states[-1], self.settings.restart_file.replace(".trf", ".erf"))
         else:
             shutil.copyfile(
                 self.settings.initial_states_folder / "cold_state.erf",
-                self.settings.restart_file.replace(".trf", ".erf"),
+                self.settings.restart_file.replace(".trf", ".erf")
             )
 
     def save_state(self):
