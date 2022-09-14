@@ -74,6 +74,29 @@ class TuflowSimulation:
                 self.settings.initial_states_folder / "cold_state.trf",
                 self.settings.restart_file,
             )
+          
+        states = list(filter(os.path.isfile, glob.glob(search_dir + "/warm_*.erf")))
+        states.sort(key=lambda x: os.path.getmtime(x))
+        valid_states = []
+        if states:
+            for state in states:
+                if (
+                    os.stat(state).st_mtime
+                    < (
+                        datetime.now()
+                        - timedelta(self.settings.states_expiry_time_days)
+                    ).timestamp()
+                ):
+                    os.remove(state)
+                else:
+                    valid_states.append(state)
+            logger.info("Using state: %s", valid_states[-1])
+            shutil.copyfile(valid_states[-1], self.settings.restart_file.replace(".trf", ".erf")
+        else:
+            shutil.copyfile(
+                self.settings.initial_states_folder / "cold_state.erf",
+                self.settings.restart_file.replace(".trf", ".erf"),
+            )
 
     def save_state(self):
         tcf_file = str(self.settings.tcf_file)
